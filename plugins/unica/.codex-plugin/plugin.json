@@ -1,0 +1,46 @@
+{
+  "name": "unica",
+  "version": "0.1.0",
+  "description": "Pinned 1C:Enterprise development tooling for Codex.",
+  "author": {
+    "name": "Ingvar Consulting, LLC",
+    "url": "https://ingvar.pro"
+  },
+  "homepage": "https://github.com/ingvarvilkman/unica",
+  "repository": "https://github.com/ingvarvilkman/unica",
+  "license": "MIT",
+  "keywords": [
+    "1c",
+    "1c-enterprise",
+    "bsl",
+    "mcp",
+    "codex",
+    "v8-runner"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Unica",
+    "shortDescription": "Pinned 1C developer tools and MCP servers for Codex",
+    "longDescription": "Unica packages pinned macOS arm64 tools for 1C:Enterprise development: bsl-analyzer, v8-runner, and the public v8std MCP endpoint. Tool binaries are launched through checksum-verifying wrappers so a plugin version maps to a known toolset.",
+    "developerName": "Ingvar Consulting, LLC",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://ingvar.pro",
+    "privacyPolicyURL": "https://ingvar.pro/privacy",
+    "termsOfServiceURL": "https://ingvar.pro/terms",
+    "defaultPrompt": [
+      "Set up 1C development tools for this repo",
+      "Analyze this 1C project with bsl-analyzer",
+      "Run v8-runner checks for this 1C project"
+    ],
+    "brandColor": "#2563EB",
+    "composerIcon": "./assets/unica-icon.svg",
+    "logo": "./assets/unica-icon.svg",
+    "screenshots": []
+  }
+}

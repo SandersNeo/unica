@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "targetTriple": "aarch64-apple-darwin",
+  "builtAt": "2026-05-01",
+  "tools": [
+    {
+      "name": "bsl-analyzer",
+      "version": "0.1.144",
+      "repository": "https://github.com/itrous/bsl-analyzer",
+      "upstreamUrl": "https://github.com/itrous/bsl-analyzer/releases/tag/v0.1.144",
+      "sourceTag": "v0.1.144",
+      "sourceCommit": "aff7de0f7b6e2db73bba5c16ca95b84971bc1002",
+      "license": "LGPL-3.0-or-later",
+      "binaryPath": "bin/darwin-arm64/bsl-analyzer",
+      "sha256": "efe851deb313edcfba53e367e20923bd6c5e84430b0d654a02ce6d0524ce42fb"
+    },
+    {
+      "name": "v8-runner",
+      "version": "0.3.0",
+      "repository": "https://github.com/alkoleft/v8-runner-rust",
+      "upstreamUrl": "https://github.com/alkoleft/v8-runner-rust/releases/tag/v0.3.0",
+      "sourceTag": "v0.3.0",
+      "sourceCommit": "e41c9dba5552851036fd6087f0b4a72ede01cb81",
+      "license": "NOASSERTION",
+      "binaryPath": "bin/darwin-arm64/v8-runner",
+      "sha256": "f753888b21a30d5ff78030fa4ba12ac894798b9d727c7bcf2b908e43349bf94d"
+    }
+  ],
+  "remoteMcpServers": [
+    {
+      "name": "unica-v8std",
+      "url": "https://ai.v8std.ru/mcp",
+      "protocol": "streamable-http"
+    }
+  ]
+}

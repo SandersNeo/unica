@@ -1,0 +1,33 @@
+{
+  "mcpServers": {
+    "unica-bsl-reference": {
+      "command": "bash",
+      "args": [
+        "-lc",
+        "for p in ./plugins/unica/scripts/run-bsl-reference.sh ./scripts/run-bsl-reference.sh; do if [ -x \"$p\" ]; then exec \"$p\"; fi; done; echo 'Unica bsl-analyzer reference launcher not found' >&2; exit 127"
+      ],
+      "note": "bsl-analyzer reference profile: platform syntax/help/search tools. Uses the pinned macOS arm64 binary packaged by Unica."
+    },
+    "unica-bsl-workspace": {
+      "command": "bash",
+      "args": [
+        "-lc",
+        "for p in ./plugins/unica/scripts/run-bsl-workspace.sh ./scripts/run-bsl-workspace.sh; do if [ -x \"$p\" ]; then exec \"$p\"; fi; done; echo 'Unica bsl-analyzer workspace launcher not found' >&2; exit 127"
+      ],
+      "note": "bsl-analyzer workspace profile: local 1C code, metadata, SDBL validation, and optional live tools. Set UNICA_BSL_SOURCE_DIR to override the default current directory."
+    },
+    "unica-v8-runner": {
+      "command": "bash",
+      "args": [
+        "-lc",
+        "for p in ./plugins/unica/scripts/run-v8-runner-mcp.sh ./scripts/run-v8-runner-mcp.sh; do if [ -x \"$p\" ]; then exec \"$p\"; fi; done; echo 'Unica v8-runner launcher not found' >&2; exit 127"
+      ],
+      "note": "v8-runner stdio MCP server. Uses the pinned macOS arm64 binary packaged by Unica."
+    },
+    "unica-v8std": {
+      "type": "http",
+      "url": "https://ai.v8std.ru/mcp",
+      "note": "Public v8std streamable HTTP MCP endpoint for 1C standards, APK codes, and v8-code-style knowledge."
+    }
+  }
+}
