@@ -37,6 +37,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Test CI helper scripts
+        run: python -m unittest discover -s tests/ci
+
       - name: Build target bundle
         run: >
           python scripts/ci/build-unica-tools.py

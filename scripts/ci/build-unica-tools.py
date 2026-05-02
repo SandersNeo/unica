@@ -124,24 +124,91 @@ def resolve_source(tool: dict, explicit_source: Path | None, work_dir: Path) -> 
     return checkout_source(tool, work_dir)
 
 
-def create_python_env(source_dir: Path, work_dir: Path) -> tuple[Path, Path]:
+def create_python_env(source_dir: Path, work_dir: Path) -> Path:
     if not source_dir.exists():
         raise SystemExit(f"python tool source directory not found: {source_dir}")
 
     venv_dir = (work_dir / "python-env").resolve()
     if os.name == "nt":
         venv_python = venv_dir / "Scripts" / "python.exe"
-        venv_bin = venv_dir / "Scripts"
     else:
         venv_python = venv_dir / "bin" / "python"
-        venv_bin = venv_dir / "bin"
 
     if not venv_python.exists():
         run([sys.executable, "-m", "venv", str(venv_dir)])
 
     run([str(venv_python), "-m", "pip", "install", "--upgrade", "pip", "pyinstaller"])
     run([str(venv_python), "-m", "pip", "install", str(source_dir)])
-    return venv_python, venv_bin
+    return venv_python
+
+
+def resolve_console_script_entrypoint(venv_python: Path, command_name: str) -> tuple[str, str]:
+    code = r"""
+import json
+import sys
+from importlib.metadata import entry_points
+
+command_name = sys.argv[1]
+eps = entry_points()
+if hasattr(eps, "select"):
+    candidates = eps.select(group="console_scripts", name=command_name)
+else:
+    candidates = [ep for ep in eps.get("console_scripts", []) if ep.name == command_name]
+
+matches = list(candidates)
+if not matches:
+    raise SystemExit(f"console_scripts entrypoint not found: {command_name}")
+
+entrypoint = matches[0]
+if not entrypoint.attr:
+    raise SystemExit(f"console_scripts entrypoint is not callable: {entrypoint.value}")
+
+print(json.dumps({"module": entrypoint.module, "attr": entrypoint.attr}))
+"""
+    try:
+        result = subprocess.run(
+            [str(venv_python), "-c", code, command_name],
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or exc.stdout).strip()
+        message = f": {detail}" if detail else ""
+        raise SystemExit(f"failed to resolve installed entrypoint {command_name}{message}") from exc
+
+    data = json.loads(result.stdout)
+    return data["module"], data["attr"]
+
+
+def write_entrypoint_stub(build_root: Path, command_name: str, module: str, attr: str) -> Path:
+    stub = build_root / f"{command_name}-entrypoint.py"
+    stub.write_text(
+        "\n".join(
+            [
+                "import importlib",
+                "import sys",
+                "",
+                f"MODULE = {module!r}",
+                f"CALLABLE = {attr!r}",
+                "",
+                "",
+                "def _load_entrypoint():",
+                "    obj = importlib.import_module(MODULE)",
+                "    for part in CALLABLE.split('.'):",
+                "        obj = getattr(obj, part)",
+                "    return obj",
+                "",
+                "",
+                "if __name__ == '__main__':",
+                "    sys.exit(_load_entrypoint()())",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return stub
 
 
 def build_python_entrypoint(
@@ -150,16 +217,15 @@ def build_python_entrypoint(
     out_dir: Path,
     exe: str,
     venv_python: Path,
-    venv_bin: Path,
 ) -> Path:
     command_name = tool["entrypoint"]
-    script = venv_bin / f"{command_name}{'.exe' if os.name == 'nt' else ''}"
-    if not script.exists():
-        raise SystemExit(f"installed entrypoint not found on PATH: {command_name}")
-
-    build_root = work_dir / command_name
+    build_root = (work_dir / command_name).resolve()
     shutil.rmtree(build_root, ignore_errors=True)
     build_root.mkdir(parents=True)
+
+    module, attr = resolve_console_script_entrypoint(venv_python, command_name)
+    script = write_entrypoint_stub(build_root, command_name, module, attr)
+    collect_package = tool.get("collectAll", module.split(".", 1)[0])
     run(
         [
             str(venv_python),
@@ -171,7 +237,9 @@ def build_python_entrypoint(
             "--name",
             command_name,
             "--collect-all",
-            "rlm_tools_bsl",
+            collect_package,
+            "--hidden-import",
+            module,
             str(script),
         ],
         cwd=build_root,
@@ -240,7 +308,7 @@ def main() -> None:
     downloads_dir.mkdir(parents=True, exist_ok=True)
 
     built_paths: dict[str, Path] = {}
-    python_env_cache: dict[Path, tuple[Path, Path]] = {}
+    python_env_cache: dict[Path, Path] = {}
     source_cache: dict[tuple[str, str, str], Path] = {}
 
     for tool in lock["tools"]:
@@ -268,14 +336,13 @@ def main() -> None:
             source_dir = source_cache[key]
             if source_dir not in python_env_cache:
                 python_env_cache[source_dir] = create_python_env(source_dir, args.work_dir / args.target)
-            venv_python, venv_bin = python_env_cache[source_dir]
+            venv_python = python_env_cache[source_dir]
             dest = build_python_entrypoint(
                 tool,
                 args.work_dir / args.target / "pyinstaller",
                 target_bin_dir,
                 exe,
                 venv_python,
-                venv_bin,
             )
         else:
             raise SystemExit(f"unsupported assetStrategy for {tool['name']}: {strategy}")
