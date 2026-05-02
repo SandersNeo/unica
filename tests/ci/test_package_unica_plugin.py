@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import stat
 import tempfile
 import unittest
 from pathlib import Path
@@ -144,6 +146,24 @@ class PackageUnicaPluginTests(unittest.TestCase):
             data = json.loads(dest.read_text(encoding="utf-8"))
             self.assertEqual(data["name"], "unica-local")
             self.assertEqual(data["plugins"][0]["name"], "unica")
+
+    @unittest.skipIf(os.name == "nt", "POSIX executable bits are validated on POSIX CI")
+    def test_copy_binary_tree_marks_files_executable(self) -> None:
+        module = load_package_module()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source"
+            dest = root / "dest"
+            source.mkdir()
+            binary = source / "v8-runner"
+            binary.write_text("binary", encoding="utf-8")
+            binary.chmod(0o644)
+
+            module.copy_binary_tree(source, dest)
+
+            copied_mode = (dest / "v8-runner").stat().st_mode
+            self.assertTrue(copied_mode & stat.S_IXUSR)
 
 
 if __name__ == "__main__":

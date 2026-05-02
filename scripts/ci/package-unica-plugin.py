@@ -30,6 +30,13 @@ def copytree(src: Path, dst: Path, *, ignore: set[str] | None = None) -> None:
     shutil.copytree(src, dst, ignore=_ignore)
 
 
+def copy_binary_tree(src: Path, dst: Path) -> None:
+    copytree(src, dst)
+    for path in dst.rglob("*"):
+        if path.is_file():
+            path.chmod(path.stat().st_mode | 0o111)
+
+
 def sha256(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as stream:
@@ -266,7 +273,7 @@ def main() -> None:
             if target_dir.is_dir():
                 if args.target is not None and target_dir.name != args.target:
                     continue
-                copytree(target_dir, plugin_dst / "bin" / target_dir.name)
+                copy_binary_tree(target_dir, plugin_dst / "bin" / target_dir.name)
 
     write_manifest(plugin_dst, grouped_tools, lock_file)
 
