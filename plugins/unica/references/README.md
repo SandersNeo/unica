@@ -26,6 +26,10 @@ XML formats, DSL contracts, and reusable layout patterns live in
 
 - `references/platform/development-standards.md` — coding, architecture, and form-module standards.
 - `references/platform/platform-solutions.md` — common platform pitfalls and fix templates.
+- `references/platform/runtime-diagnostics.md` — ЖР/ТЖ, startup, web-client, HTTP, background-job, and process/session diagnostics.
+- `references/platform/db-performance.md` — query, SKD, indexes, locks, virtual tables, and DBMS evidence.
+- `references/platform/integration-contracts.md` — HTTP/SOAP/OData/JSON/XML/file-exchange contracts and error semantics.
+- `references/platform/platform-mechanics.md` — background jobs, temp storage, auth/crypto, data separation, and platform runtime boundaries.
 - `references/tooling/v8project.md` — project configuration contract.
 - `references/tooling/runtime-build.md` — runtime build/dump/load/make details.
 - `references/tooling/internal-package.md` — maintainer-only packaging and tool-wrapper notes.

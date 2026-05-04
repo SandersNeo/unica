@@ -13,11 +13,17 @@ description: "Справка платформы 1С и объектной мод
 
 ## Workflow
 
-1. State the exact platform/API question: object, method/property, version, client/server context, managed/ordinary mode.
+1. State the exact platform/API question: object, method/property, platform version, infobase mode, client/server context, managed/ordinary mode, and whether code runs in UI, server, background job, or external integration.
 2. Search standards and platform guidance through `unica.standards.search`; for code fragments use `unica.standards.explain` with `snippet`.
 3. Validate against local project context with `unica.project.map` and targeted `unica.code.search` if the answer depends on project conventions.
 4. If behavior is version-sensitive, ask for or read the configured platform version before giving a hard answer.
 5. For code examples, run `unica.runtime.execute` with `operation=syntax` when feasible.
+
+## Platform context
+
+- Read `references/platform/platform-mechanics.md` when the answer depends on runtime context, auth, temporary storage, data separation, background jobs, or client/server boundaries.
+- Read `references/platform/runtime-diagnostics.md` when a platform question is really about a startup/runtime failure and needs evidence before an answer.
+- Do not give a platform answer from memory when version, mode, or context can change the behavior. Resolve that first, then answer.
 
 ## Stop rules
 

@@ -20,6 +20,14 @@ description: "Автономный сервер отладки 1С. Исполь
 5. If the user provides or the runtime returns a web URL, validate it with `web-test`; otherwise report that no public MCP `unica` operation currently produced a web-client URL.
 6. Analyze server artifacts: startup command/result, URL, source-set, platform mode, handler metadata, diagnostics, event log or technological log files if provided.
 
+## Diagnostics
+
+- Read `references/platform/runtime-diagnostics.md` before explaining startup, HTTP-service, web-client, or process-level failures.
+- Preserve launch command/result, platform version, infobase path, port, URL, client mode, source-set, process id, session id, and temporary artifact paths.
+- For HTTP-service debugging, map URL path to metadata and handler module before interpreting the error.
+- For web-client debugging, separate server startup, authentication, UI load, client script failure, and business error.
+- If runtime output does not expose a URL, log path, or process id through public MCP `unica`, record a Unica MCP contract gap.
+
 ## Boundaries
 
 - This skill is for local autonomous debugging, not for production deployment.

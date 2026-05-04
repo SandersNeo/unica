@@ -20,6 +20,15 @@ description: "Реализация интеграций 1С. Используй 
 5. Handle secrets outside versioned modules and configs. Do not log tokens, passwords, full request bodies with personal data, or raw auth headers.
 6. Verify syntax/tests with `unica.runtime.execute`; for live HTTP behavior use the `autonomous-server` skill or a user-provided debug URL.
 
+## Contract detail
+
+- Read `references/platform/integration-contracts.md` before changing HTTP/SOAP/OData/JSON/XML/file-exchange behavior.
+- Decide state model explicitly: stateless call, authenticated session, queue, exchange message, cursor, or file batch.
+- For OData, JSON, and XML, preserve field names, types, date/number semantics, encoding, null handling, and backward compatibility.
+- Define auth and secret handling before code: token refresh, certificate or OpenID context, storage location, masking, and retry behavior.
+- Make retries idempotent through external ids, message ids, or duplicate checks. Do not rely on remote retries being harmless.
+- Stabilize error semantics: validation, auth, duplicate, temporary remote failure, permanent remote failure, and internal failure must be distinguishable.
+
 ## Review checklist
 
 - Contract and versioning are explicit.

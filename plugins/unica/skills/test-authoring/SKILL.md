@@ -20,6 +20,14 @@ description: "Проектирование и запуск тестов 1С: tes
 5. Run `unica.runtime.execute` with `operation=syntax` after adding test code, then `operation=test` with `testRunner=yaxunit` or `testRunner=va`.
 6. Report exact failing test, expected/actual behavior, and whether the failure is test setup or product behavior.
 
+## Scenario design
+
+- Read `references/platform/integration-contracts.md` when tests verify HTTP/API/OData/JSON/XML/file-exchange behavior.
+- Read `references/platform/runtime-diagnostics.md` when a test is meant to reproduce a user-facing runtime failure.
+- Treat tests as executable debugging: one test should prove the intended user/API scenario, the failure mode, and the regression boundary.
+- For API scenarios, cover success, validation error, auth error, duplicate/idempotent retry, remote timeout, and stable error semantics.
+- For UI or web-client scenarios, pair `operation=test` with an autonomous URL or `web-test` only after the runtime surface exists.
+
 ## MCP examples
 
 ```json

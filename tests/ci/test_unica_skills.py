@@ -135,6 +135,65 @@ SCENARIO_SKILLS = {
         "unica.standards.search",
         "unica.standards.explain",
     ],
+    "background-jobs": [
+        "unica.project.map",
+        "unica.code.search",
+        "unica.meta.info",
+        "unica.code.diagnostics",
+        "unica.standards.search",
+        "unica.standards.explain",
+        "unica.runtime.execute",
+    ],
+    "data-exchange": [
+        "unica.project.map",
+        "unica.code.search",
+        "unica.meta.info",
+        "unica.code.diagnostics",
+        "unica.standards.search",
+        "unica.standards.explain",
+        "unica.runtime.execute",
+    ],
+    "db-performance": [
+        "unica.project.map",
+        "unica.code.search",
+        "unica.meta.info",
+        "unica.skd.info",
+        "unica.code.diagnostics",
+        "unica.standards.search",
+        "unica.standards.explain",
+        "unica.runtime.execute",
+    ],
+    "security-auth-crypto": [
+        "unica.project.map",
+        "unica.code.search",
+        "unica.meta.info",
+        "unica.role.info",
+        "unica.code.diagnostics",
+        "unica.standards.search",
+        "unica.standards.explain",
+        "unica.runtime.execute",
+    ],
+    "data-separation": [
+        "unica.project.map",
+        "unica.code.search",
+        "unica.meta.info",
+        "unica.role.info",
+        "unica.code.diagnostics",
+        "unica.standards.search",
+        "unica.standards.explain",
+        "unica.runtime.execute",
+    ],
+    "release-support": [
+        "unica.project.map",
+        "unica.code.search",
+        "unica.cf.info",
+        "unica.cfe.diff",
+        "unica.meta.info",
+        "unica.code.diagnostics",
+        "unica.standards.search",
+        "unica.standards.explain",
+        "unica.runtime.execute",
+    ],
 }
 
 SCENARIO_REQUIRED_TOKENS = {
@@ -159,6 +218,12 @@ SCENARIO_REQUIRED_TOKENS = {
     "integration-implement": ["HTTP-сервис", "webhook", "secrets"],
     "autonomous-server": ["HTTP-сервис", "веб-клиент", "web-test"],
     "log-analysis": ["журнала регистрации", "технологического журнала", "ЖР", "ТЖ"],
+    "background-jobs": ["Фоновые", "регламентные", "idempotency", "retry"],
+    "data-exchange": ["планы обмена", "РИБ", "регистрация изменений", "контракт обмена"],
+    "db-performance": ["SQL/DBMS trace", "индексы", "блокировки", "TEMPDB/WAL"],
+    "security-auth-crypto": ["OpenID", "сертификаты", "CryptoPro", "секреты"],
+    "data-separation": ["tenant-boundaries", "RLS", "разделители", "безопасные запросы"],
+    "release-support": ["сравнение/объединение", "Поставка", "поддержка", "совместимость"],
 }
 
 REPLACED_RUNTIME_SKILLS = {
@@ -618,6 +683,10 @@ class UnicaSkillRoutingTests(unittest.TestCase):
             "specs/README.md",
             "platform/development-standards.md",
             "platform/platform-solutions.md",
+            "platform/runtime-diagnostics.md",
+            "platform/db-performance.md",
+            "platform/integration-contracts.md",
+            "platform/platform-mechanics.md",
             "tooling/v8project.md",
             "tooling/internal-package.md",
             "tooling/runtime-build.md",
@@ -687,7 +756,7 @@ class UnicaSkillRoutingTests(unittest.TestCase):
             r"\bclaude\b",
             r"Anthropic",
             r"\.claude",
-            r"/db-",
+            r"/db-(?!performance\.md\b)",
             r"/epf-(init|build|dump|validate)",
             r"/erf-(init|build|dump|validate)",
             r"1c-code-metadata-mcp",
@@ -701,6 +770,22 @@ class UnicaSkillRoutingTests(unittest.TestCase):
                 for pattern in forbidden_patterns:
                     with self.subTest(path=path.relative_to(self.repo_root()), pattern=pattern):
                         self.assertIsNone(re.search(pattern, text))
+
+    def test_skills_and_references_do_not_expose_restricted_research_sources(self) -> None:
+        forbidden_patterns = [
+            r"docs/its",
+            r"\.pdf\b",
+            r"Документация\.pdf",
+            r"Методическая поддержка",
+            r":: 1С:Предприятие",
+        ]
+        scanned_roots = [self.reference_root(), self.skill_root()]
+        for root in scanned_roots:
+            for path in root.rglob("*.md"):
+                text = path.read_text(encoding="utf-8")
+                for pattern in forbidden_patterns:
+                    with self.subTest(path=path.relative_to(self.repo_root()), pattern=pattern):
+                        self.assertIsNone(re.search(pattern, text, flags=re.I))
 
     def test_documented_reference_paths_exist(self) -> None:
         roots = [

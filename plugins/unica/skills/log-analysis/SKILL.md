@@ -15,6 +15,11 @@ description: "Анализ журнала регистрации и технол
 
 Accept explicit journal registration exports, technological log files, copied log fragments, or paths provided by the user. Preserve timestamps, process/session ids, users, infobase, event kind, module/procedure, transaction id, SQL text, and correlation ids.
 
+## References
+
+- Read `references/platform/runtime-diagnostics.md` for ЖР/ТЖ timeline, startup, web-client, HTTP, background job, and process/session evidence.
+- Read `references/platform/db-performance.md` when log fragments contain SQL, locks, deadlocks, waits, long queries, or DBMS-specific artifacts.
+
 ## Workflow
 
 1. Classify the evidence: ЖР event, ТЖ event, platform exception, DBMS/SQL, lock/deadlock, long call, background job, HTTP service, web client request, or auth/session problem.
@@ -23,6 +28,7 @@ Accept explicit journal registration exports, technological log files, copied lo
 4. Map log entries back to source with `unica.code.search` and metadata with `unica.meta.info`.
 5. Use `unica.standards.search` or `unica.standards.explain` for diagnostic ids, platform messages, or standards-sensitive recommendations.
 6. Separate root cause from consequences: the first exception/lock/timeout usually matters more than later rollback noise.
+7. For DBMS evidence, preserve lock holder/waiter, SQL text, transaction boundary, process id, session id, wait event, table/index name, and elapsed time together.
 
 ## Output
 
