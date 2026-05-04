@@ -11,11 +11,11 @@ The public skills model developer operations, not infrastructure tools:
 - search and analyze BSL code inside those workflows.
 - bootstrap a new 1C repository workspace with `v8project.yaml`.
 
-Bundled tooling, wrappers, MCP server names, checksums, and third-party notices are internal package infrastructure. Project configuration is `v8project.yaml` / `V8TR_CONFIG`; database and build workflows should use the `v8-runner` skill, which calls MCP `unica.runtime.execute`. See `references/tooling.md` when maintaining the plugin itself.
+Bundled tooling, wrappers, MCP server names, checksums, and third-party notices are internal package infrastructure. Project configuration is `v8project.yaml` / `V8TR_CONFIG`; database and build workflows should use the `v8-runner` skill, which calls MCP `unica.runtime.execute`. See `references/tooling/internal-package.md` when maintaining the plugin itself.
 
 ## Skills
 
-The `skills/` directory contains operation skills adapted from `cc-1c-skills` with plugin-local scripts and references. Examples:
+The `skills/` directory contains operation skills and scenario references for 1C developer workflows. Examples:
 
 - `cf-edit`, `cf-info`, `cf-init`, `cf-validate`
 - `cfe-init`, `cfe-borrow`, `cfe-diff`, `cfe-patch-method`, `cfe-validate`
@@ -142,7 +142,7 @@ python3 -m json.tool plugins/unica/third-party/tools.lock.json >/dev/null
 python3 -m json.tool plugins/unica/third-party/manifest.json >/dev/null
 bash -n plugins/unica/scripts/*.sh
 python3 -m py_compile scripts/ci/*.py
-rg '\.claude/skills' plugins/unica/skills
+rg 'references/(cc-1c-skills|ai-rules-1c)|Claude|[.]claude|Anthropic' plugins/unica/references plugins/unica/skills
 codex debug prompt-input 'test'
 ```
 
