@@ -15,7 +15,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.interface.edit`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.interface.edit`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Точечное редактирование файла командного интерфейса подсистемы 1С.
@@ -31,18 +31,43 @@ allowed-tools:
 | CreateIfMissing | нет | Создать файл если не существует |
 | NoValidate | нет | Пропустить авто-валидацию |
 
-## Команда
+## MCP вызов
 
 ### Inline mode
 
-```powershell
-powershell.exe -NoProfile -File 'scripts/interface-edit.ps1' -CIPath '<path>' -Operation hide -Value '<cmd>'
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.interface.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "CIPath": "<path>",
+      "Operation": "hide",
+      "Value": "<cmd>",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ### JSON mode
 
-```powershell
-powershell.exe -NoProfile -File 'scripts/interface-edit.ps1' -CIPath '<path>' -DefinitionFile '<json>'
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.interface.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "CIPath": "<path>",
+      "DefinitionFile": "<json>",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## Операции
@@ -58,25 +83,114 @@ powershell.exe -NoProfile -File 'scripts/interface-edit.ps1' -CIPath '<path>' -D
 
 ## Примеры
 
-```powershell
-# Скрыть команду
-... -CIPath Subsystems/Продажи/Ext/CommandInterface.xml -Operation hide -Value "Catalog.Товары.StandardCommand.OpenList"
+### Скрыть команду
 
-# Показать команду
-... -Operation show -Value "Report.Продажи.Command.Отчёт"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.interface.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "CIPath": "Subsystems/Продажи/Ext/CommandInterface.xml",
+      "Operation": "hide",
+      "Value": "Catalog.Товары.StandardCommand.OpenList",
+      "dryRun": false
+    }
+  }
+}
+```
 
-# Разместить в группе
-... -Operation place -Value '{"command":"Report.X.Command.Y","group":"CommandGroup.Отчеты"}'
+### Показать команду
 
-# Задать порядок подсистем
-... -Operation subsystem-order -Value '["Subsystem.X.Subsystem.A","Subsystem.X.Subsystem.B"]'
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.interface.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "CIPath": "Subsystems/Продажи/Ext/CommandInterface.xml",
+      "Operation": "show",
+      "Value": "Report.Продажи.Command.Отчёт",
+      "dryRun": false
+    }
+  }
+}
+```
 
-# Создать новый CI
-... -CIPath <new-path> -Operation subsystem-order -Value '[...]' -CreateIfMissing
+### Разместить в группе
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.interface.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "CIPath": "Subsystems/Продажи/Ext/CommandInterface.xml",
+      "Operation": "place",
+      "Value": "{\"command\":\"Report.X.Command.Y\",\"group\":\"CommandGroup.Отчеты\"}",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Задать порядок подсистем
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.interface.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "CIPath": "Subsystems/Продажи/Ext/CommandInterface.xml",
+      "Operation": "subsystem-order",
+      "Value": "[\"Subsystem.X.Subsystem.A\",\"Subsystem.X.Subsystem.B\"]",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Создать новый командный интерфейс
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.interface.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "CIPath": "<new-path>",
+      "Operation": "subsystem-order",
+      "Value": "[...]",
+      "CreateIfMissing": true,
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## Верификация
 
-```
-/interface-validate <CIPath>
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.interface.validate",
+    "arguments": {
+      "cwd": "<workspace>",
+      "CIPath": "<CIPath>"
+    }
+  }
+}
 ```

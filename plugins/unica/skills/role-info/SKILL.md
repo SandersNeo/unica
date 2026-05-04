@@ -13,7 +13,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.role.info`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.role.info`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Парсит `Rights.xml` роли и выдаёт компактную сводку: объекты сгруппированы по типу, показаны только разрешённые права. Сжатие: тысячи строк XML → 50–150 строк текста.
@@ -26,10 +26,21 @@ allowed-tools:
 
 **RightsPath** — путь к файлу `Rights.xml` роли (обычно `Roles/ИмяРоли/Ext/Rights.xml`).
 
-## Запуск скрипта
+## MCP вызов
 
-```powershell
-powershell.exe -NoProfile -File scripts/role-info.ps1 -RightsPath <path> -OutFile <output.txt>
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.role.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "RightsPath": "<path>",
+      "OutFile": "<output.txt>"
+    }
+  }
+}
 ```
 
 ### Параметры
@@ -45,7 +56,18 @@ powershell.exe -NoProfile -File scripts/role-info.ps1 -RightsPath <path> -OutFil
 **Важно:** Всегда используй `-OutFile` и читай результат через Read tool. Прямой вывод в консоль через bash ломает кириллицу.
 
 Для большой роли при усечении вывода:
-```powershell
-... -Offset 150            # пагинация: пропустить первые 150 строк
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.role.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "RightsPath": "<path>",
+      "Offset": 150,
+      "OutFile": "<output.txt>"
+    }
+  }
+}
 ```
-

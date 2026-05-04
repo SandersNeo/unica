@@ -1,0 +1,12 @@
+{
+  "name": "ParitySubsystem",
+  "synonym": "Parity subsystem",
+  "comment": "Parity fixture",
+  "content": [
+    "Catalog.ParityCatalog"
+  ],
+  "children": [
+    "ParityNested"
+  ],
+  "picture": "CommonPicture.ParityIcon"
+}

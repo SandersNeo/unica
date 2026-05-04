@@ -15,12 +15,12 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.subsystem.compile`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.subsystem.compile`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Принимает JSON-определение подсистемы → генерирует XML + файловую структуру + регистрирует в родителе (Configuration.xml или родительская подсистема).
 
-## Параметры и команда
+## MCP параметры
 
 | Параметр | Описание |
 |----------|----------|
@@ -30,8 +30,20 @@ allowed-tools:
 | `Parent` | Путь к XML родительской подсистемы (для вложенных) |
 | `NoValidate` | Пропустить авто-валидацию |
 
-```powershell
-powershell.exe -NoProfile -File 'scripts/subsystem-compile.ps1' -Value '<json>' -OutputDir '<ConfigDir>'
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.compile",
+    "arguments": {
+      "cwd": "<workspace>",
+      "Value": "{\"name\":\"Продажи\",\"synonym\":\"Продажи\",\"content\":[\"Catalog.Номенклатура\"]}",
+      "OutputDir": "src",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## JSON-определение
@@ -53,14 +65,57 @@ powershell.exe -NoProfile -File 'scripts/subsystem-compile.ps1' -Value '<json>' 
 
 ## Примеры
 
-```powershell
-# Минимальная подсистема
-... -Value '{"name":"Тест"}' -OutputDir config/
+### Минимальная подсистема
 
-# С составом и картинкой
-... -Value '{"name":"Продажи","content":["Catalog.Товары","Report.Продажи"],"picture":"CommonPicture.Продажи"}' -OutputDir config/
-
-# Вложенная подсистема
-... -Value '{"name":"Дочерняя"}' -OutputDir config/ -Parent config/Subsystems/Продажи.xml
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.compile",
+    "arguments": {
+      "cwd": "<workspace>",
+      "Value": "{\"name\":\"Тест\"}",
+      "OutputDir": "config/",
+      "dryRun": false
+    }
+  }
+}
 ```
 
+### С составом и картинкой
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.compile",
+    "arguments": {
+      "cwd": "<workspace>",
+      "Value": "{\"name\":\"Продажи\",\"content\":[\"Catalog.Товары\",\"Report.Продажи\"],\"picture\":\"CommonPicture.Продажи\"}",
+      "OutputDir": "config/",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Вложенная подсистема
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.compile",
+    "arguments": {
+      "cwd": "<workspace>",
+      "Value": "{\"name\":\"Дочерняя\"}",
+      "OutputDir": "config/",
+      "Parent": "config/Subsystems/Продажи.xml",
+      "dryRun": false
+    }
+  }
+}
+```

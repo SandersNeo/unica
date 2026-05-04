@@ -14,7 +14,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.mxl.info`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.mxl.info`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Читает Template.xml табличного документа и выводит компактную сводку: именованные области, параметры, наборы колонок. Заменяет необходимость читать тысячи строк XML.
@@ -42,23 +42,108 @@ allowed-tools:
 
 Укажите либо `-TemplatePath`, либо оба `-ProcessorName` и `-TemplateName`.
 
-## Команда
+## MCP вызов
 
-```powershell
-powershell.exe -NoProfile -File scripts/mxl-info.ps1 -TemplatePath "<путь>"
+### Прямой путь к Template.xml или каталогу макета
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.mxl.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<путь>"
+    }
+  }
+}
 ```
 
-Или по имени обработки/макета:
-```powershell
-powershell.exe -NoProfile -File scripts/mxl-info.ps1 -ProcessorName "<Имя>" -TemplateName "<Макет>" [-SrcDir "<каталог>"]
+### По имени обработки и макета
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.mxl.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ProcessorName": "<Имя>",
+      "TemplateName": "<Макет>",
+      "SrcDir": "<каталог>"
+    }
+  }
+}
 ```
 
-Дополнительные флаги:
-```powershell
-... -WithText              # включить текстовое содержимое ячеек
-... -Format json           # JSON-вывод для программной обработки
-... -MaxParams 20          # показать больше параметров на область
-... -Offset 150            # пагинация: пропустить первые 150 строк
+### Включить текстовое содержимое ячеек
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.mxl.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<путь>",
+      "WithText": true
+    }
+  }
+}
+```
+
+### JSON-вывод для программной обработки
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.mxl.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<путь>",
+      "Format": "json"
+    }
+  }
+}
+```
+
+### Показать больше параметров на область
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.mxl.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<путь>",
+      "MaxParams": 20
+    }
+  }
+}
+```
+
+### Пагинация
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.mxl.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<путь>",
+      "Offset": 150
+    }
+  }
+}
 ```
 
 ## Чтение вывода

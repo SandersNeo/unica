@@ -2,8 +2,19 @@
 
 Для сложных и комбинированных операций используйте JSON-файл вместо inline-режима.
 
-```powershell
-powershell.exe -NoProfile -File scripts/meta-edit.ps1 -DefinitionFile "<json>" -ObjectPath "<path>"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "objectPath": "<path>",
+      "definitionFile": "<json>"
+    }
+  }
+}
 ```
 
 ## add — добавить элементы

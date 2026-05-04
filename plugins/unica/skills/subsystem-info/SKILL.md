@@ -14,12 +14,12 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.subsystem.info`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.subsystem.info`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Читает XML подсистемы из выгрузки конфигурации 1С и выводит компактное описание структуры.
 
-## Параметры и команда
+## MCP параметры
 
 | Параметр | Описание |
 |----------|----------|
@@ -29,8 +29,20 @@ allowed-tools:
 | `Limit` / `Offset` | Пагинация (по умолчанию 150 строк) |
 | `OutFile` | Записать результат в файл (UTF-8 BOM) |
 
-```powershell
-powershell.exe -NoProfile -File scripts/subsystem-info.ps1 -SubsystemPath "<путь>"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "SubsystemPath": "src/Subsystems/Продажи",
+      "Mode": "overview",
+      "Limit": 120
+    }
+  }
+}
 ```
 
 ## Пять режимов
@@ -45,25 +57,122 @@ powershell.exe -NoProfile -File scripts/subsystem-info.ps1 -SubsystemPath "<пу
 
 ## Примеры
 
-```powershell
-# Обзор подсистемы
-... -SubsystemPath Subsystems/Продажи.xml
+### Обзор подсистемы
 
-# Состав подсистемы
-... -SubsystemPath Subsystems/Администрирование.xml -Mode content
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "SubsystemPath": "Subsystems/Продажи.xml"
+    }
+  }
+}
+```
 
-# Только документы в составе
-... -SubsystemPath Subsystems/Продажи.xml -Mode content -Name Document
+### Состав подсистемы
 
-# Командный интерфейс подсистемы
-... -SubsystemPath Subsystems/Продажи.xml -Mode ci
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "SubsystemPath": "Subsystems/Администрирование.xml",
+      "Mode": "content"
+    }
+  }
+}
+```
 
-# Дерево подсистем от корня
-... -SubsystemPath Subsystems -Mode tree
+### Только документы в составе
 
-# Дерево от конкретной подсистемы
-... -SubsystemPath Subsystems/Администрирование.xml -Mode tree
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "SubsystemPath": "Subsystems/Продажи.xml",
+      "Mode": "content",
+      "Name": "Document"
+    }
+  }
+}
+```
 
-# Дерево только для одной подсистемы
-... -SubsystemPath Subsystems -Mode tree -Name Администрирование
+### Командный интерфейс подсистемы
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "SubsystemPath": "Subsystems/Продажи.xml",
+      "Mode": "ci"
+    }
+  }
+}
+```
+
+### Дерево подсистем от корня
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "SubsystemPath": "Subsystems",
+      "Mode": "tree"
+    }
+  }
+}
+```
+
+### Дерево от конкретной подсистемы
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "SubsystemPath": "Subsystems/Администрирование.xml",
+      "Mode": "tree"
+    }
+  }
+}
+```
+
+### Дерево только для одной подсистемы
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "SubsystemPath": "Subsystems",
+      "Mode": "tree",
+      "Name": "Администрирование"
+    }
+  }
+}
 ```

@@ -15,7 +15,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.meta.compile`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.meta.compile`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Принимает JSON-определение объекта метаданных → генерирует XML + модули в структуре выгрузки конфигурации + регистрирует в Configuration.xml.
@@ -27,10 +27,22 @@ allowed-tools:
 3. Если нужно изменить созданный объект — `/meta-edit`
 4. Если нужно проверить — `/meta-validate`
 
-## Команда
+## MCP вызов
 
-```powershell
-powershell.exe -NoProfile -File scripts/meta-compile.ps1 -JsonPath "<json>" -OutputDir "<ConfigDir>"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.compile",
+    "arguments": {
+      "cwd": "<workspace>",
+      "JsonPath": "definitions/catalog-products.json",
+      "OutputDir": "src",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 | Параметр | Описание |

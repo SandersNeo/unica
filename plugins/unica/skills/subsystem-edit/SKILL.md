@@ -15,12 +15,12 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.subsystem.edit`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.subsystem.edit`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Точечное редактирование XML подсистемы: состав, дочерние подсистемы, свойства.
 
-## Параметры и команда
+## MCP параметры
 
 | Параметр | Описание |
 |----------|----------|
@@ -30,8 +30,21 @@ allowed-tools:
 | `Value` | Значение для операции |
 | `NoValidate` | Пропустить авто-валидацию |
 
-```powershell
-powershell.exe -NoProfile -File 'scripts/subsystem-edit.ps1' -SubsystemPath '<path>' -Operation add-content -Value 'Catalog.Товары'
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "SubsystemPath": "src/Subsystems/Продажи",
+      "Operation": "add-content",
+      "Value": "Catalog.Номенклатура",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## Операции
@@ -46,19 +59,97 @@ powershell.exe -NoProfile -File 'scripts/subsystem-edit.ps1' -SubsystemPath '<pa
 
 ## Примеры
 
-```powershell
-# Добавить объект в состав
-... -SubsystemPath Subsystems/Продажи.xml -Operation add-content -Value "Document.Заказ"
+### Добавить объект в состав
 
-# Добавить несколько объектов
-... -SubsystemPath Subsystems/Продажи.xml -Operation add-content -Value '["Catalog.Товары","Report.Продажи"]'
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "SubsystemPath": "Subsystems/Продажи.xml",
+      "Operation": "add-content",
+      "Value": "Document.Заказ",
+      "dryRun": false
+    }
+  }
+}
+```
 
-# Удалить объект из состава
-... -SubsystemPath Subsystems/Продажи.xml -Operation remove-content -Value "Report.Старый"
+### Добавить несколько объектов
 
-# Добавить дочернюю подсистему
-... -SubsystemPath Subsystems/Продажи.xml -Operation add-child -Value "НоваяДочерняя"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "SubsystemPath": "Subsystems/Продажи.xml",
+      "Operation": "add-content",
+      "Value": "[\"Catalog.Товары\",\"Report.Продажи\"]",
+      "dryRun": false
+    }
+  }
+}
+```
 
-# Изменить свойство
-... -SubsystemPath Subsystems/Продажи.xml -Operation set-property -Value '{"name":"IncludeInCommandInterface","value":"false"}'
+### Удалить объект из состава
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "SubsystemPath": "Subsystems/Продажи.xml",
+      "Operation": "remove-content",
+      "Value": "Report.Старый",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Добавить дочернюю подсистему
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "SubsystemPath": "Subsystems/Продажи.xml",
+      "Operation": "add-child",
+      "Value": "НоваяДочерняя",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Изменить свойство
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.subsystem.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "SubsystemPath": "Subsystems/Продажи.xml",
+      "Operation": "set-property",
+      "Value": "{\"name\":\"IncludeInCommandInterface\",\"value\":\"false\"}",
+      "dryRun": false
+    }
+  }
+}
 ```

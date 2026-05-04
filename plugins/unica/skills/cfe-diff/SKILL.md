@@ -14,7 +14,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.cfe.diff`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.cfe.diff`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Анализирует расширение в двух режимах: обзор изменений (Mode A) или проверка переноса (Mode B).
@@ -27,10 +27,22 @@ allowed-tools:
 | `ConfigPath` | Путь к конфигурации (обязат.) | — |
 | `Mode` | `A` (обзор) / `B` (проверка переноса) | `A` |
 
-## Команда
+## MCP вызов
 
-```powershell
-powershell.exe -NoProfile -File scripts/cfe-diff.ps1 -ExtensionPath src -ConfigPath C:\cfsrc\erp -Mode A
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.diff",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ExtensionPath": "src/extensions/MyExtension",
+      "ConfigPath": "src",
+      "Mode": "summary"
+    }
+  }
+}
 ```
 
 ## Mode A — обзор расширения
@@ -55,10 +67,38 @@ powershell.exe -NoProfile -File scripts/cfe-diff.ps1 -ExtensionPath src -ConfigP
 
 ## Примеры
 
-```powershell
-# Обзор — что изменено в расширении
-... -ExtensionPath src -ConfigPath C:\cfsrc\erp -Mode A
+### Обзор: что изменено в расширении
 
-# Проверка переноса — все ли #Вставка перенесены
-... -ExtensionPath src -ConfigPath C:\cfsrc\erp -Mode B
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.diff",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ExtensionPath": "src",
+      "ConfigPath": "C:\\cfsrc\\erp",
+      "Mode": "A"
+    }
+  }
+}
+```
+
+### Проверка переноса вставок
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.diff",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ExtensionPath": "src",
+      "ConfigPath": "C:\\cfsrc\\erp",
+      "Mode": "B"
+    }
+  }
+}
 ```

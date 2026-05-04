@@ -14,7 +14,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.cfe.init`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.cfe.init`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Создаёт scaffold расширения: `Configuration.xml`, `Languages/Русский.xml`, опционально `Roles/`.
@@ -48,31 +48,119 @@ allowed-tools:
 | `ConfigPath` | Путь к выгрузке базовой конфигурации (авто-определяет CompatibilityMode и Language UUID) | — |
 | `NoRole` | Без основной роли | false |
 
-## Команда
+## MCP вызов
 
-```powershell
-powershell.exe -NoProfile -File scripts/cfe-init.ps1 -Name "МоёРасширение"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.init",
+    "arguments": {
+      "cwd": "<workspace>",
+      "Name": "MyExtension",
+      "Synonym": "Моё расширение",
+      "OutputDir": "src/extensions/MyExtension",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## Примеры
 
-```powershell
-# Расширение для ERP с авто-определением совместимости из базовой конфигурации
-... -Name Расш1 -ConfigPath C:\WS\tasks\cfsrc\erp_8.3.24 -OutputDir src
+### Расширение для ERP с авто-совместимостью
 
-# Расширение-исправление с явным режимом совместимости
-... -Name Расш1 -Purpose Patch -CompatibilityMode Version8_3_17 -OutputDir src
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.init",
+    "arguments": {
+      "cwd": "<workspace>",
+      "Name": "Расш1",
+      "ConfigPath": "C:\\WS\\tasks\\cfsrc\\erp_8.3.24",
+      "OutputDir": "src",
+      "dryRun": false
+    }
+  }
+}
+```
 
-# Расширение-доработка с версией
-... -Name МоёРасширение -Version "1.0.0.1" -Vendor "Компания" -OutputDir src
+### Расширение-исправление с явной совместимостью
 
-# Без роли, с явным префиксом
-... -Name ИсправлениеБага -NamePrefix "ИБ_" -Purpose Patch -NoRole -OutputDir src
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.init",
+    "arguments": {
+      "cwd": "<workspace>",
+      "Name": "Расш1",
+      "Purpose": "Patch",
+      "CompatibilityMode": "Version8_3_17",
+      "OutputDir": "src",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Расширение-доработка с версией
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.init",
+    "arguments": {
+      "cwd": "<workspace>",
+      "Name": "МоёРасширение",
+      "Version": "1.0.0.1",
+      "Vendor": "Компания",
+      "OutputDir": "src",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Без роли, с явным префиксом
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.init",
+    "arguments": {
+      "cwd": "<workspace>",
+      "Name": "ИсправлениеБага",
+      "NamePrefix": "ИБ_",
+      "Purpose": "Patch",
+      "NoRole": true,
+      "OutputDir": "src",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## Верификация
 
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.validate",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ExtensionPath": "src/extensions/MyExtension"
+    }
+  }
+}
 ```
-/cfe-validate <OutputDir>
-```
-

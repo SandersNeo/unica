@@ -16,3 +16,5 @@ path = "src/lib.rs"
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
+roxmltree.workspace = true
+ureq.workspace = true

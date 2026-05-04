@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import re
 import unittest
 from pathlib import Path
 
@@ -57,10 +59,272 @@ OUT_OF_SCOPE = [
     "img-grid",
 ]
 
+TASK_EXAMPLE_ARGUMENT_KEYS = {
+    "cf-edit": ["ConfigPath", "Operation", "Value"],
+    "cf-info": ["ConfigPath"],
+    "cf-init": ["Name", "OutputDir"],
+    "cf-validate": ["ConfigPath"],
+    "cfe-borrow": ["ExtensionPath", "ConfigPath", "Object"],
+    "cfe-diff": ["ExtensionPath", "ConfigPath"],
+    "cfe-init": ["Name", "OutputDir"],
+    "cfe-patch-method": ["ExtensionPath", "ModulePath", "MethodName"],
+    "cfe-validate": ["ExtensionPath"],
+    "meta-compile": ["JsonPath", "OutputDir"],
+    "meta-edit": ["ObjectPath", "Operation", "Value"],
+    "meta-info": ["ObjectPath"],
+    "meta-remove": ["ConfigDir", "Object"],
+    "meta-validate": ["ObjectPath"],
+    "form-add": ["ObjectPath", "FormName", "Purpose"],
+    "form-compile": ["JsonPath", "OutputPath"],
+    "form-edit": ["FormPath", "JsonPath"],
+    "form-info": ["FormPath"],
+    "form-remove": ["ObjectName", "FormName", "SrcDir"],
+    "form-validate": ["FormPath"],
+    "interface-edit": ["CIPath", "Operation", "Value"],
+    "interface-validate": ["CIPath"],
+    "subsystem-compile": ["Value", "OutputDir"],
+    "subsystem-edit": ["SubsystemPath", "Operation", "Value"],
+    "subsystem-info": ["SubsystemPath"],
+    "subsystem-validate": ["SubsystemPath"],
+    "template-add": ["ObjectName", "TemplateName", "TemplateType", "SrcDir"],
+    "template-remove": ["ObjectName", "TemplateName", "SrcDir"],
+    "skd-compile": ["DefinitionFile", "OutputPath"],
+    "skd-edit": ["TemplatePath", "Operation", "Value"],
+    "skd-info": ["TemplatePath"],
+    "skd-validate": ["TemplatePath"],
+    "mxl-compile": ["JsonPath", "OutputPath"],
+    "mxl-decompile": ["TemplatePath", "OutputPath"],
+    "mxl-info": ["TemplatePath", "WithText"],
+    "mxl-validate": ["TemplatePath"],
+    "role-compile": ["JsonPath", "OutputDir"],
+    "role-info": ["RightsPath"],
+    "role-validate": ["RightsPath"],
+}
+
+SCENARIO_PRESERVING_MIN_MCP_CALLS = {
+    "cf-edit": 6,
+    "cf-info": 6,
+    "cf-init": 6,
+    "cf-validate": 2,
+    "cfe-borrow": 7,
+    "cfe-diff": 3,
+    "cfe-init": 6,
+    "cfe-patch-method": 4,
+    "cfe-validate": 2,
+    "meta-edit": 11,
+    "meta-info": 14,
+    "meta-remove": 6,
+    "meta-validate": 2,
+    "form-add": 6,
+    "form-compile": 4,
+    "form-validate": 2,
+    "interface-edit": 8,
+    "interface-validate": 2,
+    "subsystem-compile": 4,
+    "subsystem-edit": 6,
+    "subsystem-info": 8,
+    "subsystem-validate": 2,
+    "template-add": 2,
+    "skd-compile": 5,
+    "skd-info": 12,
+    "skd-validate": 2,
+    "mxl-info": 6,
+    "mxl-validate": 2,
+    "role-info": 2,
+    "skd-edit": 4,
+    "role-compile": 3,
+}
+
+ALLOWED_ADDITIONAL_MCP_TOOL_NAMES = {
+    "cf-init": {"unica.cf.info", "unica.cf.validate"},
+    "cfe-borrow": {"unica.cfe.validate"},
+    "cfe-init": {"unica.cfe.validate"},
+    "form-compile": {"unica.form.info", "unica.form.validate"},
+    "interface-edit": {"unica.interface.validate"},
+    "meta-edit": {"unica.meta.info", "unica.meta.validate"},
+    "role-compile": {"unica.role.info", "unica.role.validate"},
+    "skd-compile": {"unica.skd.info", "unica.skd.validate"},
+    "skd-edit": {"unica.skd.info", "unica.skd.validate"},
+}
+
+SCENARIO_PRESERVING_TOKENS = {
+    "cf-edit": [
+        '"Operation": "modify-property"',
+        '"Value": "Version=1.0.0.1 ;; Vendor=Фирма 1С"',
+        '"Operation": "add-childObject"',
+        '"Operation": "remove-childObject"',
+        '"Operation": "add-defaultRole"',
+        '"Operation": "set-defaultRoles"',
+    ],
+    "cf-info": [
+        '"Mode": "brief"',
+        '"Mode": "full"',
+        '"Limit": 50',
+        '"Offset": 100',
+        '"Section": "home-page"',
+    ],
+    "cf-init": [
+        '"Name": "МояКонфигурация"',
+        '"Version": "1.0.0.1"',
+        '"Vendor": "Фирма 1С"',
+        '"CompatibilityMode": "Version8_3_27"',
+        '"name": "unica.cf.info"',
+        '"name": "unica.cf.validate"',
+    ],
+    "cfe-borrow": [
+        '"Object": "Catalog.Контрагенты"',
+        '"Object": "Catalog.Контрагенты.Form.ФормаЭлемента"',
+        '"Object": "Catalog.Контрагенты ;; CommonModule.ОбщийМодуль ;; Enum.ВидыОплат"',
+        '"BorrowMainAttribute": true',
+        '"BorrowMainAttribute": "All"',
+        '"name": "unica.cfe.validate"',
+    ],
+    "cfe-diff": ['"Mode": "A"', '"Mode": "B"'],
+    "cfe-init": [
+        '"ConfigPath": "C:\\\\WS\\\\tasks\\\\cfsrc\\\\erp_8.3.24"',
+        '"Purpose": "Patch"',
+        '"CompatibilityMode": "Version8_3_17"',
+        '"Version": "1.0.0.1"',
+        '"NamePrefix": "ИБ_"',
+        '"NoRole": true',
+        '"name": "unica.cfe.validate"',
+    ],
+    "cfe-patch-method": [
+        '"InterceptorType": "Before"',
+        '"InterceptorType": "After"',
+        '"Context": "НаКлиенте"',
+        '"InterceptorType": "ModificationAndControl"',
+        '"IsFunction": true',
+    ],
+    "meta-edit": [
+        '"Value": "Комментарий: Строка(200) ;; Сумма: Число(15,2) | index"',
+        '"Value": "Значение: Строка + Число(15,2) + Дата + CatalogRef.Контрагенты"',
+        '"Operation": "add-ts"',
+        '"Value": "Товары: Ном: CatalogRef.Ном | req, Кол: Число(15,3), Цена: Число(15,2)"',
+        '"Operation": "remove-attribute"',
+        '"Operation": "modify-attribute"',
+        '"Operation": "modify-property"',
+        '"Operation": "set-owners"',
+        '"Value": "Catalog.Контрагенты ;; Catalog.Организации"',
+        '"name": "unica.meta.validate"',
+        '"name": "unica.meta.info"',
+    ],
+    "meta-info": [
+        '"ObjectPath": "Catalogs/Валюты/Валюты.xml"',
+        '"ObjectPath": "Documents/АвансовыйОтчет/АвансовыйОтчет.xml"',
+        '"Name": "Товары"',
+        '"ObjectPath": "HTTPServices/ExternalAPI/ExternalAPI.xml"',
+        '"Name": "TestConnection"',
+        '"ObjectPath": "DefinedTypes/GLN/GLN.xml"',
+    ],
+    "meta-remove": [
+        '"Object": "Catalog.Устаревший"',
+        '"dryRun": true',
+        '"Force": true',
+        '"KeepFiles": true',
+        '"Object": "CommonModule.МойМодуль"',
+    ],
+    "form-add": [
+        '"ObjectPath": "Documents/АвансовыйОтчет.xml"',
+        '"Purpose": "List"',
+        '"Purpose": "Record"',
+        '"Purpose": "Choice"',
+        '"Synonym": "Выбор номенклатуры"',
+        '"SetDefault": true',
+    ],
+    "form-compile": [
+        '"FromObject": true',
+        '"name": "unica.form.validate"',
+        '"name": "unica.form.info"',
+    ],
+    "interface-edit": [
+        '"Operation": "hide"',
+        '"Operation": "show"',
+        '"Operation": "place"',
+        '"Operation": "subsystem-order"',
+        '"CreateIfMissing": true',
+        '"name": "unica.interface.validate"',
+    ],
+    "subsystem-compile": [
+        '"Value": "{\\"name\\":\\"Тест\\"}"',
+        'CommonPicture.Продажи',
+        '"Parent": "config/Subsystems/Продажи.xml"',
+    ],
+    "subsystem-edit": [
+        '"Operation": "add-content"',
+        '"Operation": "remove-content"',
+        '"Operation": "add-child"',
+        '"Operation": "set-property"',
+    ],
+    "subsystem-info": [
+        '"Mode": "content"',
+        '"Name": "Document"',
+        '"Mode": "ci"',
+        '"Mode": "tree"',
+        '"Name": "Администрирование"',
+    ],
+    "template-add": [
+        '"TemplateType": "DataCompositionSchema"',
+        '"SrcDir": "src/cfe/МоёРасширение/Reports"',
+        '"SetMainSKD": true',
+    ],
+    "role-compile": [
+        '"name": "unica.role.validate"',
+        '"name": "unica.role.info"',
+    ],
+    "skd-compile": [
+        '"DefinitionFile": "<json>"',
+        '"Value": "<json-string>"',
+        '"name": "unica.skd.validate"',
+        '"name": "unica.skd.info"',
+        '"Mode": "variant"',
+    ],
+    "skd-edit": [
+        '"Operation": "add-field"',
+        '"Value": "Цена: decimal(15,2) ;; Количество: decimal(15,3) ;; Сумма: decimal(15,2)"',
+        '"name": "unica.skd.validate"',
+        '"name": "unica.skd.info"',
+    ],
+    "skd-info": [
+        '"Mode": "query"',
+        '"Name": "НоменклатураСЦенами"',
+        '"Batch": 3',
+        '"Mode": "fields"',
+        '"Mode": "calculated"',
+        '"Mode": "resources"',
+        '"Mode": "trace"',
+        '"Mode": "variant"',
+        '"Mode": "templates"',
+        '"Name": "ВидНалоговойБазы"',
+        '"Mode": "trace"',
+    ],
+    "mxl-info": [
+        '"ProcessorName": "<Имя>"',
+        '"TemplateName": "<Макет>"',
+        '"WithText": true',
+        '"Format": "json"',
+        '"MaxParams": 20',
+        '"Offset": 150',
+    ],
+    "role-info": ['"OutFile": "<output.txt>"', '"Offset": 150'],
+}
+
 
 class UnicaSkillRoutingTests(unittest.TestCase):
+    def repo_root(self) -> Path:
+        return Path(__file__).resolve().parents[2]
+
     def skill_root(self) -> Path:
-        return Path(__file__).resolve().parents[2] / "plugins" / "unica" / "skills"
+        return self.repo_root() / "plugins" / "unica" / "skills"
+
+    def parity_reference_root(self) -> Path:
+        return (
+            self.repo_root()
+            / "tests"
+            / "fixtures"
+            / "unica_mcp_script_parity"
+            / "reference_skills"
+        )
 
     def test_in_scope_skills_route_to_single_unica_mcp(self) -> None:
         for skill, tool_name in IN_SCOPE_TOOLS.items():
@@ -89,6 +353,92 @@ class UnicaSkillRoutingTests(unittest.TestCase):
                 text = skill_path.read_text(encoding="utf-8")
                 for name in forbidden:
                     self.assertNotIn(name, text)
+
+    def test_skills_do_not_use_model_specific_assistant_names(self) -> None:
+        forbidden = ["Claude", "claude", "Anthropic", ".claude", "CLAUDE.md"]
+        for skill_doc in self.skill_root().glob("*/**/*.md"):
+            with self.subTest(path=skill_doc.relative_to(self.skill_root())):
+                text = skill_doc.read_text(encoding="utf-8")
+                for token in forbidden:
+                    self.assertNotIn(token, text)
+
+    def test_migrated_skills_do_not_reference_skill_local_operation_scripts(self) -> None:
+        forbidden = [
+            "powershell.exe",
+            ".ps1",
+            ".py",
+            "Current Python/PowerShell scripts",
+            "fallback implementation details",
+            "Native execution path",
+        ]
+        for skill in IN_SCOPE_TOOLS:
+            with self.subTest(skill=skill):
+                text = (self.skill_root() / skill / "SKILL.md").read_text(encoding="utf-8")
+                for token in forbidden:
+                    self.assertNotIn(token, text)
+
+    def test_migrated_skills_do_not_ship_skill_local_operation_scripts(self) -> None:
+        for skill in IN_SCOPE_TOOLS:
+            with self.subTest(skill=skill):
+                self.assertFalse((self.skill_root() / skill / "scripts").exists())
+
+    def test_parity_reference_scripts_are_test_only_python(self) -> None:
+        reference_root = self.parity_reference_root()
+        referenced_skills = {
+            path.parent.parent.name for path in reference_root.glob("*/scripts/*.py")
+        }
+        self.assertEqual(referenced_skills, set(IN_SCOPE_TOOLS))
+        for path in reference_root.rglob("*"):
+            if path.is_file():
+                with self.subTest(path=path.relative_to(reference_root)):
+                    self.assertEqual(path.suffix, ".py")
+
+    def test_migrated_skill_verification_sections_use_mcp_examples(self) -> None:
+        slash_command = re.compile(r"(?m)^/[a-z][a-z-]+\b")
+        verification_section = re.compile(r"(?ms)^## Верификация\s*\n(.*?)(?=^## |\Z)")
+        for skill in IN_SCOPE_TOOLS:
+            with self.subTest(skill=skill):
+                text = (self.skill_root() / skill / "SKILL.md").read_text(encoding="utf-8")
+                match = verification_section.search(text)
+                if match is None:
+                    continue
+                section = match.group(1)
+                self.assertIsNone(slash_command.search(section))
+                self.assertNotIn("powershell.exe", section)
+                self.assertNotIn(".ps1", section)
+                self.assertNotIn(".py", section)
+                if "```" in section:
+                    self.assertIn('"method": "tools/call"', section)
+
+    def test_migrated_skills_use_task_parameterized_mcp_examples(self) -> None:
+        generic_arguments = '"arguments": {\n      "cwd": "<workspace>"\n    }'
+        for skill, tool_name in IN_SCOPE_TOOLS.items():
+            with self.subTest(skill=skill):
+                text = (self.skill_root() / skill / "SKILL.md").read_text(encoding="utf-8")
+                self.assertNotIn(generic_arguments, text)
+                for key in TASK_EXAMPLE_ARGUMENT_KEYS[skill]:
+                    self.assertIn(f'"{key}"', text)
+                mcp_blocks = [
+                    block
+                    for block in re.findall(r"```json\n(.*?)\n```", text, flags=re.S)
+                    if '"method": "tools/call"' in block
+                ]
+                self.assertGreater(len(mcp_blocks), 0)
+                if skill in SCENARIO_PRESERVING_MIN_MCP_CALLS:
+                    self.assertGreaterEqual(
+                        len(mcp_blocks), SCENARIO_PRESERVING_MIN_MCP_CALLS[skill]
+                    )
+                for token in SCENARIO_PRESERVING_TOKENS.get(skill, []):
+                    self.assertIn(token, text)
+                for block in mcp_blocks:
+                    payload = json.loads(block)
+                    params = payload["params"]
+                    allowed_tool_names = {
+                        tool_name,
+                        *ALLOWED_ADDITIONAL_MCP_TOOL_NAMES.get(skill, set()),
+                    }
+                    self.assertIn(params["name"], allowed_tool_names)
+                    self.assertNotEqual(set(params["arguments"].keys()), {"cwd"})
 
 
 if __name__ == "__main__":

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses">
+  <Subsystem>
+    <Properties>
+      <Name>Sales</Name>
+      <Synonym>
+        <v8:item xmlns:v8="http://v8.1c.ru/8.1/data/core">
+          <v8:lang>ru</v8:lang>
+          <v8:content>Sales</v8:content>
+        </v8:item>
+      </Synonym>
+      <Content>
+        <Item>Catalog.ParityCatalog</Item>
+        <Item>Catalog.KeepCatalog</Item>
+      </Content>
+    </Properties>
+  </Subsystem>
+</MetaDataObject>

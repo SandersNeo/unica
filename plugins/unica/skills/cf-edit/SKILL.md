@@ -15,12 +15,12 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.cf.edit`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.cf.edit`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Точечное редактирование Configuration.xml: свойства, состав ChildObjects, роли по умолчанию.
 
-## Параметры и команда
+## MCP параметры
 
 | Параметр | Описание |
 |----------|----------|
@@ -30,8 +30,21 @@ allowed-tools:
 | `DefinitionFile` | JSON-файл с массивом операций |
 | `NoValidate` | Пропустить авто-валидацию |
 
-```powershell
-powershell.exe -NoProfile -File scripts/cf-edit.ps1 -ConfigPath '<path>' -Operation modify-property -Value 'Version=1.0.0.1'
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigPath": "src/Configuration.xml",
+      "Operation": "modify-property",
+      "Value": "Version=1.0.0.1",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## Операции
@@ -51,17 +64,97 @@ powershell.exe -NoProfile -File scripts/cf-edit.ps1 -ConfigPath '<path>' -Operat
 
 ## Примеры
 
-```powershell
-# Изменить версию и поставщика
-... -ConfigPath src -Operation modify-property -Value "Version=1.0.0.1 ;; Vendor=Фирма 1С"
+### Изменить версию и поставщика
 
-# Добавить объекты
-... -ConfigPath src -Operation add-childObject -Value "Catalog.Товары ;; Document.Заказ"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigPath": "src",
+      "Operation": "modify-property",
+      "Value": "Version=1.0.0.1 ;; Vendor=Фирма 1С",
+      "dryRun": false
+    }
+  }
+}
+```
 
-# Удалить объект
-... -ConfigPath src -Operation remove-childObject -Value "Catalog.Устаревший"
+### Добавить объекты
 
-# Роли по умолчанию
-... -ConfigPath src -Operation add-defaultRole -Value "ПолныеПрава"
-... -ConfigPath src -Operation set-defaultRoles -Value "ПолныеПрава ;; Администратор"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigPath": "src",
+      "Operation": "add-childObject",
+      "Value": "Catalog.Товары ;; Document.Заказ",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Удалить объект
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigPath": "src",
+      "Operation": "remove-childObject",
+      "Value": "Catalog.Устаревший",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Добавить роль по умолчанию
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigPath": "src",
+      "Operation": "add-defaultRole",
+      "Value": "ПолныеПрава",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Заменить роли по умолчанию
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigPath": "src",
+      "Operation": "set-defaultRoles",
+      "Value": "ПолныеПрава ;; Администратор",
+      "dryRun": false
+    }
+  }
+}
 ```

@@ -14,7 +14,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.interface.validate`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.interface.validate`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Проверяет XML командного интерфейса на структурные ошибки: корневой элемент, допустимые секции, порядок, формат ссылок на команды, дубликаты.
@@ -28,9 +28,36 @@ allowed-tools:
 | MaxErrors | нет   | 30      | Остановиться после N ошибок              |
 | OutFile   | нет   | —       | Записать результат в файл (UTF-8 BOM)   |
 
-## Команда
+## MCP вызов
 
-```powershell
-powershell.exe -NoProfile -File "scripts/interface-validate.ps1" -CIPath "Subsystems/Продажи"
-powershell.exe -NoProfile -File "scripts/interface-validate.ps1" -CIPath "Subsystems/Продажи/Ext/CommandInterface.xml"
+### Каталог подсистемы
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.interface.validate",
+    "arguments": {
+      "cwd": "<workspace>",
+      "CIPath": "Subsystems/Продажи"
+    }
+  }
+}
+```
+
+### Прямой путь к CommandInterface.xml
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.interface.validate",
+    "arguments": {
+      "cwd": "<workspace>",
+      "CIPath": "Subsystems/Продажи/Ext/CommandInterface.xml"
+    }
+  }
+}
 ```

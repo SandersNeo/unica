@@ -1,0 +1,15 @@
+{
+  "name": "ParityReader",
+  "synonym": "Parity reader",
+  "setForNewObjects": false,
+  "setForAttributesByDefault": true,
+  "objects": [
+    {
+      "object": "Catalog.ParityCatalog",
+      "rights": [
+        "Read",
+        "View"
+      ]
+    }
+  ]
+}

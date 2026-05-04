@@ -75,6 +75,7 @@ payload = json.loads(responses[2]["result"]["content"][0]["text"])
 assert payload["cache"]["mode"] == "dry-run"
 assert "FormChanged" in payload["cache"]["events"]
 assert "metadata_graph" in payload["cache"]["invalidated"]
+assert "lazy_rebuilt" in payload["cache"]
 print("ok")
 PY
 ```

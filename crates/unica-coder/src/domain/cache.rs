@@ -11,8 +11,15 @@ pub struct CacheReport {
     pub events: Vec<String>,
     pub invalidated: Vec<String>,
     pub refreshed: Vec<String>,
+    pub lazy_rebuilt: Vec<String>,
     pub stale: Vec<String>,
     pub fresh: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct CacheAccess {
+    pub reads: &'static [&'static str],
+    pub writes: &'static [&'static str],
 }
 
 #[derive(Debug, Clone, Default)]

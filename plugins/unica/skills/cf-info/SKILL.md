@@ -14,12 +14,12 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.cf.info`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.cf.info`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Читает Configuration.xml из выгрузки конфигурации и выводит компактное описание структуры.
 
-## Параметры и команда
+## MCP параметры
 
 | Параметр | Описание |
 |----------|----------|
@@ -29,8 +29,20 @@ allowed-tools:
 | `Limit` / `Offset` | Пагинация (по умолчанию 150 строк) |
 | `OutFile` | Записать результат в файл (UTF-8 BOM) |
 
-```powershell
-powershell.exe -NoProfile -File scripts/cf-info.ps1 -ConfigPath "<путь>"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigPath": "src/Configuration.xml",
+      "Format": "text",
+      "Limit": 150
+    }
+  }
+}
 ```
 
 ## Три режима
@@ -43,19 +55,88 @@ powershell.exe -NoProfile -File scripts/cf-info.ps1 -ConfigPath "<путь>"
 
 ## Примеры
 
-```powershell
-# Обзор пустой конфигурации
-... -ConfigPath src
+### Обзор пустой конфигурации
 
-# Краткая сводка реальной конфигурации
-... -ConfigPath src -Mode brief
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigPath": "src"
+    }
+  }
+}
+```
 
-# Полная информация
-... -ConfigPath src -Mode full
+### Краткая сводка реальной конфигурации
 
-# С пагинацией
-... -ConfigPath src -Mode full -Limit 50 -Offset 100
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigPath": "src",
+      "Mode": "brief"
+    }
+  }
+}
+```
 
-# Drill-down: только начальная страница (раскладка форм с ролями)
-... -ConfigPath src -Section home-page
+### Полная информация
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigPath": "src",
+      "Mode": "full"
+    }
+  }
+}
+```
+
+### Полная информация с пагинацией
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigPath": "src",
+      "Mode": "full",
+      "Limit": 50,
+      "Offset": 100
+    }
+  }
+}
+```
+
+### Drill-down: начальная страница
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigPath": "src",
+      "Section": "home-page"
+    }
+  }
+}
 ```

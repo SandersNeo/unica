@@ -14,7 +14,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.cfe.borrow`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.cfe.borrow`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Заимствует объекты из основной конфигурации в расширение. Создаёт XML-файлы с `ObjectBelonging=Adopted` и `ExtendedConfigurationObject`, добавляет запись в ChildObjects расширения.
@@ -75,34 +75,137 @@ allowed-tools:
 
 **Защита существующих данных**: если зависимый объект уже заимствован с содержимым (реквизитами, формами) — скрипт не перезаписывает его, а добавляет только недостающее.
 
-## Команда
+## MCP вызов
 
-```powershell
-powershell.exe -NoProfile -File scripts/cfe-borrow.ps1 -ExtensionPath src -ConfigPath C:\cfsrc\erp -Object "Catalog.Контрагенты"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.borrow",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ExtensionPath": "src/extensions/MyExtension",
+      "ConfigPath": "src",
+      "Object": "Catalog.Контрагенты.Form.ФормаЭлемента",
+      "BorrowMainAttribute": "Form",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## Примеры
 
-```powershell
-# Заимствовать один объект
-... -ExtensionPath src -ConfigPath C:\cfsrc\erp -Object "Catalog.Контрагенты"
+### Заимствовать один объект
 
-# Заимствовать форму (автоматически заимствует родительский объект)
-... -ExtensionPath src -ConfigPath C:\cfsrc\erp -Object "Catalog.Контрагенты.Form.ФормаЭлемента"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.borrow",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ExtensionPath": "src",
+      "ConfigPath": "C:\\cfsrc\\erp",
+      "Object": "Catalog.Контрагенты",
+      "dryRun": false
+    }
+  }
+}
+```
 
-# Несколько объектов за раз
-... -ExtensionPath src -ConfigPath C:\cfsrc\erp -Object "Catalog.Контрагенты ;; CommonModule.ОбщийМодуль ;; Enum.ВидыОплат"
+### Заимствовать форму
 
-# Заимствовать форму с основным реквизитом (реквизиты по DataPath формы)
-... -ExtensionPath src -ConfigPath C:\cfsrc\erp -Object "Catalog.Номенклатура.Form.ФормаЭлемента" -BorrowMainAttribute
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.borrow",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ExtensionPath": "src",
+      "ConfigPath": "C:\\cfsrc\\erp",
+      "Object": "Catalog.Контрагенты.Form.ФормаЭлемента",
+      "dryRun": false
+    }
+  }
+}
+```
 
-# Заимствовать форму с ВСЕМИ реквизитами объекта
-... -ExtensionPath src -ConfigPath C:\cfsrc\erp -Object "Catalog.Номенклатура.Form.ФормаЭлемента" -BorrowMainAttribute All
+### Несколько объектов за раз
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.borrow",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ExtensionPath": "src",
+      "ConfigPath": "C:\\cfsrc\\erp",
+      "Object": "Catalog.Контрагенты ;; CommonModule.ОбщийМодуль ;; Enum.ВидыОплат",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Заимствовать форму с основным реквизитом
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.borrow",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ExtensionPath": "src",
+      "ConfigPath": "C:\\cfsrc\\erp",
+      "Object": "Catalog.Номенклатура.Form.ФормаЭлемента",
+      "BorrowMainAttribute": true,
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Заимствовать форму со всеми реквизитами объекта
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.borrow",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ExtensionPath": "src",
+      "ConfigPath": "C:\\cfsrc\\erp",
+      "Object": "Catalog.Номенклатура.Form.ФормаЭлемента",
+      "BorrowMainAttribute": "All",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## Верификация
 
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.validate",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ExtensionPath": "src/extensions/MyExtension"
+    }
+  }
+}
 ```
-/cfe-validate <ExtensionPath>
-```
-

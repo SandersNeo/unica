@@ -4,26 +4,12 @@ This file tracks open implementation work only.
 
 ## Current Tasks
 
-- [ ] Implement former skill-local Python/PowerShell command semantics inside
-  native `unica.*` MCP tools. Start with read-only `info` and `validate`, then
-  generators/removers, then editors and complex CFE/UI operations.
-- [ ] Rewrite migrated skills so the workflow path references only MCP `unica`
-  tools and does not include operation commands from skill-local files.
-- [ ] Remove migrated skill-local operation files after fixture parity is proven.
-  Package launchers under `plugins/unica/scripts/` remain infrastructure and are
-  not part of this removal.
-- [ ] Add a CI test that rejects operation guidance in migrated skills when it
-  points to skill-local Python/PowerShell files instead of `unica.*` MCP tools.
-- [ ] Implement the native HTTP client/proxy for the standards adapter so
-  `unica.standards.search` and `unica.standards.explain` execute against the
-  v8std MCP endpoint internally instead of returning the current placeholder
-  adapter response.
-- [ ] Expand `WorkspaceStateRepository` from reporting invalidation impact to lazy
-  cache rebuild for heavy indexes and eager rebuild for cheap critical graphs.
-- [ ] Add fake-adapter contract tests for build/runtime, code analysis and
-  standards adapters.
-- [ ] Add package-level smoke that verifies generated marketplace `.mcp.json` exposes
-  only `unica` and that the packaged `run-unica.sh` starts the bundled binary.
+- [ ] Keep parity-unproven XML/DSL tools on the transitional internal
+  operation-file adapter until focused fixtures prove native Rust equivalence.
+- [ ] Complete operation-specific native writers for mutating XML/DSL tools where
+  `dryRun: false` still refuses execution until the writer is implemented.
+- [ ] Expand fixture parity beyond the native generic XML parser for rich legacy
+  `info`, `validate`, `compile`, `edit`, remove, and CFE/UI outputs.
 
 ## Rules
 

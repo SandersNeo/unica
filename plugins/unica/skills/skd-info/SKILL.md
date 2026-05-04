@@ -14,12 +14,12 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.skd.info`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.skd.info`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Читает Template.xml схемы компоновки данных (СКД) и выводит компактную сводку. Заменяет необходимость читать тысячи строк XML.
 
-## Параметры и команда
+## MCP параметры
 
 | Параметр | Описание |
 |----------|----------|
@@ -30,21 +30,182 @@ allowed-tools:
 | `Limit` / `Offset` | Пагинация (по умолчанию 150 строк) |
 | `OutFile` | Записать результат в файл (UTF-8 BOM) |
 
-```powershell
-powershell.exe -NoProfile -File scripts/skd-info.ps1 -TemplatePath "<путь>"
+### Overview: точка входа
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<путь>"
+    }
+  }
+}
 ```
 
-С указанием режима:
-```powershell
-... -Mode query -Name НоменклатураСЦенами
-... -Mode query -Name ДанныеТ13 -Batch 3
-... -Mode fields -Name КадастроваяСтоимость
-... -Mode calculated -Name КоэффициентКи
-... -Mode resources -Name СуммаНалога
-... -Mode trace -Name "Коэффициент Ки"
-... -Mode variant -Name 1
-... -Mode templates
-... -Mode templates -Name ВидНалоговойБазы
+### Текст запроса набора
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<путь>",
+      "Mode": "query",
+      "Name": "НоменклатураСЦенами"
+    }
+  }
+}
+```
+
+### Текст третьего пакета запроса
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<путь>",
+      "Mode": "query",
+      "Name": "ДанныеТ13",
+      "Batch": 3
+    }
+  }
+}
+```
+
+### Деталь поля
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<путь>",
+      "Mode": "fields",
+      "Name": "КадастроваяСтоимость"
+    }
+  }
+}
+```
+
+### Вычисляемое поле
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<путь>",
+      "Mode": "calculated",
+      "Name": "КоэффициентКи"
+    }
+  }
+}
+```
+
+### Ресурс
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<путь>",
+      "Mode": "resources",
+      "Name": "СуммаНалога"
+    }
+  }
+}
+```
+
+### Трассировка поля
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<путь>",
+      "Mode": "trace",
+      "Name": "Коэффициент Ки"
+    }
+  }
+}
+```
+
+### Вариант настроек
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<путь>",
+      "Mode": "variant",
+      "Name": 1
+    }
+  }
+}
+```
+
+### Карта шаблонов
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<путь>",
+      "Mode": "templates"
+    }
+  }
+}
+```
+
+### Шаблон по имени
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<путь>",
+      "Mode": "templates",
+      "Name": "ВидНалоговойБазы"
+    }
+  }
+}
 ```
 
 ## Режимы
@@ -76,7 +237,36 @@ powershell.exe -NoProfile -File scripts/skd-info.ps1 -TemplatePath "<путь>"
 
 ## Верификация
 
+### Overview: точка входа
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<path>"
+    }
+  }
+}
 ```
-/skd-info <path>                            — overview (точка входа)
-/skd-info <path> -Mode trace -Name <field>  — трассировка поля
+
+### Трассировка поля
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<path>",
+      "Mode": "trace",
+      "Name": "<field>"
+    }
+  }
+}
 ```

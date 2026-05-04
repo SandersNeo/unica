@@ -14,7 +14,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.cfe.patch_method`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.cfe.patch_method`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Генерирует `.bsl` файл с декоратором перехвата для заимствованного объекта расширения. Создаёт файл или дописывает в существующий.
@@ -55,25 +55,89 @@ allowed-tools:
 | `After` | `&После` | Код после вызова оригинального метода |
 | `ModificationAndControl` | `&ИзменениеИКонтроль` | Копия тела метода с маркерами `#Вставка`/`#Удаление` |
 
-## Команда
+## MCP вызов
 
-```powershell
-powershell.exe -NoProfile -File scripts/cfe-patch-method.ps1 -ExtensionPath src -ModulePath "Catalog.Контрагенты.ObjectModule" -MethodName "ПриЗаписи" -InterceptorType Before
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.patch_method",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ExtensionPath": "src/extensions/MyExtension",
+      "ModulePath": "Catalog.Контрагенты.ObjectModule",
+      "MethodName": "ПриЗаписи",
+      "InterceptorType": "Before",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## Примеры
 
-```powershell
-# Перехват &Перед на сервере
-... -ExtensionPath src -ModulePath "Catalog.Контрагенты.ObjectModule" -MethodName "ПриЗаписи" -InterceptorType Before
+### Перехват Перед на сервере
 
-# Перехват &После на клиенте
-... -ExtensionPath src -ModulePath "Document.Заказ.Form.ФормаДокумента" -MethodName "ПослеЗаписиНаСервере" -InterceptorType After -Context "НаКлиенте"
-
-# ИзменениеИКонтроль для функции
-... -ExtensionPath src -ModulePath "CommonModule.ОбщийМодуль" -MethodName "ПолучитьДанные" -InterceptorType ModificationAndControl -IsFunction
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.patch_method",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ExtensionPath": "src",
+      "ModulePath": "Catalog.Контрагенты.ObjectModule",
+      "MethodName": "ПриЗаписи",
+      "InterceptorType": "Before",
+      "dryRun": false
+    }
+  }
+}
 ```
 
+### Перехват После на клиенте
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.patch_method",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ExtensionPath": "src",
+      "ModulePath": "Document.Заказ.Form.ФормаДокумента",
+      "MethodName": "ПослеЗаписиНаСервере",
+      "InterceptorType": "After",
+      "Context": "НаКлиенте",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### ИзменениеИКонтроль для функции
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cfe.patch_method",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ExtensionPath": "src",
+      "ModulePath": "CommonModule.ОбщийМодуль",
+      "MethodName": "ПолучитьДанные",
+      "InterceptorType": "ModificationAndControl",
+      "IsFunction": true,
+      "dryRun": false
+    }
+  }
+}
+```
 ## Генерируемый код (Before)
 
 ```bsl

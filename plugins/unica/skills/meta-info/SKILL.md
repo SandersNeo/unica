@@ -14,12 +14,12 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.meta.info`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.meta.info`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Читает XML объекта метаданных из выгрузки конфигурации 1С и выводит компактное описание структуры.
 
-## Параметры и команда
+## MCP параметры
 
 | Параметр | Описание |
 |----------|----------|
@@ -29,8 +29,20 @@ allowed-tools:
 | `Limit` / `Offset` | Пагинация (по умолчанию 150 строк) |
 | `OutFile` | Записать результат в файл (UTF-8 BOM) |
 
-```powershell
-powershell.exe -NoProfile -File scripts/meta-info.ps1 -ObjectPath "<путь>"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "src/Catalogs/Номенклатура.xml",
+      "Mode": "overview",
+      "Limit": 120
+    }
+  }
+}
 ```
 
 ## Три режима
@@ -52,43 +64,217 @@ powershell.exe -NoProfile -File scripts/meta-info.ps1 -ObjectPath "<путь>"
 
 ## Примеры
 
-```powershell
-# Справочник — overview
-... -ObjectPath Catalogs/Валюты/Валюты.xml
+### Справочник: overview
 
-# Документ — полная сводка с колонками ТЧ, движениями, формами
-... -ObjectPath Documents/АвансовыйОтчет/АвансовыйОтчет.xml -Mode full
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "Catalogs/Валюты/Валюты.xml"
+    }
+  }
+}
+```
 
-# Регистр сведений — краткая сводка
-... -ObjectPath InformationRegisters/КурсыВалют/КурсыВалют.xml -Mode brief
+### Документ: полная сводка
 
-# Drill-down в ТЧ документа
-... -ObjectPath Documents/АвансовыйОтчет/АвансовыйОтчет.xml -Name Товары
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "Documents/АвансовыйОтчет/АвансовыйОтчет.xml",
+      "Mode": "full"
+    }
+  }
+}
+```
 
-# Drill-down в реквизит
-... -ObjectPath Catalogs/Валюты/Валюты.xml -Name ОсновнаяВалюта
+### Регистр сведений: краткая сводка
 
-# Общий модуль — флаги контекста и повторное использование
-... -ObjectPath CommonModules/ОбщегоНазначения/ОбщегоНазначения.xml
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "InformationRegisters/КурсыВалют/КурсыВалют.xml",
+      "Mode": "brief"
+    }
+  }
+}
+```
 
-# HTTP-сервис — шаблоны URL и методы
-... -ObjectPath HTTPServices/ExternalAPI/ExternalAPI.xml
+### Drill-down в табличную часть документа
 
-# HTTP-сервис — drill-down в шаблон URL
-... -ObjectPath HTTPServices/ExternalAPI/ExternalAPI.xml -Name АктуальныеЗадачи
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "Documents/АвансовыйОтчет/АвансовыйОтчет.xml",
+      "Name": "Товары"
+    }
+  }
+}
+```
 
-# Веб-сервис — операции с параметрами
-... -ObjectPath WebServices/EnterpriseDataUpload_1_0_1_1/EnterpriseDataUpload_1_0_1_1.xml
+### Drill-down в реквизит
 
-# Веб-сервис — drill-down в операцию
-... -ObjectPath WebServices/EnterpriseDataUpload_1_0_1_1/EnterpriseDataUpload_1_0_1_1.xml -Name TestConnection
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "Catalogs/Валюты/Валюты.xml",
+      "Name": "ОсновнаяВалюта"
+    }
+  }
+}
+```
 
-# Подписка на событие — full раскрывает список источников
-... -ObjectPath EventSubscriptions/ПолныйРегистрацияУдаления/ПолныйРегистрацияУдаления.xml -Mode full
+### Общий модуль
 
-# Регламентное задание
-... -ObjectPath ScheduledJobs/АвтоматическоеЗакрытиеМесяца/АвтоматическоеЗакрытиеМесяца.xml
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "CommonModules/ОбщегоНазначения/ОбщегоНазначения.xml"
+    }
+  }
+}
+```
 
-# Определяемый тип
-... -ObjectPath DefinedTypes/GLN/GLN.xml
+### HTTP-сервис: шаблоны URL и методы
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "HTTPServices/ExternalAPI/ExternalAPI.xml"
+    }
+  }
+}
+```
+
+### HTTP-сервис: drill-down в шаблон URL
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "HTTPServices/ExternalAPI/ExternalAPI.xml",
+      "Name": "АктуальныеЗадачи"
+    }
+  }
+}
+```
+
+### Веб-сервис: операции с параметрами
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "WebServices/EnterpriseDataUpload_1_0_1_1/EnterpriseDataUpload_1_0_1_1.xml"
+    }
+  }
+}
+```
+
+### Веб-сервис: drill-down в операцию
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "WebServices/EnterpriseDataUpload_1_0_1_1/EnterpriseDataUpload_1_0_1_1.xml",
+      "Name": "TestConnection"
+    }
+  }
+}
+```
+
+### Подписка на событие
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "EventSubscriptions/ПолныйРегистрацияУдаления/ПолныйРегистрацияУдаления.xml",
+      "Mode": "full"
+    }
+  }
+}
+```
+
+### Регламентное задание
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "ScheduledJobs/АвтоматическоеЗакрытиеМесяца/АвтоматическоеЗакрытиеМесяца.xml"
+    }
+  }
+}
+```
+
+### Определяемый тип
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "DefinedTypes/GLN/GLN.xml"
+    }
+  }
+}
 ```

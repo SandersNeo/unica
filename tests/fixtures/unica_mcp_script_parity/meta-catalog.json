@@ -1,0 +1,29 @@
+{
+  "type": "Catalog",
+  "name": "ParityCatalog",
+  "synonym": "Parity catalog",
+  "codeLength": 9,
+  "descriptionLength": 50,
+  "attributes": [
+    {
+      "name": "Article",
+      "type": "String",
+      "length": 32,
+      "synonym": "Article"
+    }
+  ],
+  "tabularSections": [
+    {
+      "name": "Lines",
+      "synonym": "Lines",
+      "attributes": [
+        {
+          "name": "Quantity",
+          "type": "Number",
+          "precision": 15,
+          "scale": 3
+        }
+      ]
+    }
+  ]
+}

@@ -15,7 +15,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.meta.remove`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.meta.remove`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Безопасно удаляет объект из XML-выгрузки конфигурации. Перед удалением проверяет ссылки на объект в реквизитах, коде и других метаданных. Если ссылки найдены — удаление блокируется.
@@ -36,10 +36,22 @@ allowed-tools:
 | KeepFiles  | нет          | Не удалять файлы, только дерегистрировать       |
 | Force      | нет          | Удалить несмотря на найденные ссылки            |
 
-## Команда
+## MCP вызов
 
-```powershell
-powershell.exe -NoProfile -File scripts/meta-remove.ps1 -ConfigDir "<путь>" -Object "Catalog.Товары"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.remove",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigDir": "src",
+      "Object": "Catalog.СтарыйСправочник",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## Поддерживаемые типы
@@ -48,20 +60,94 @@ Catalog, Document, Enum, Constant, InformationRegister, AccumulationRegister, Ac
 
 ## Примеры
 
-```powershell
-# Проверка ссылок + dry run
-... -ConfigDir C:\WS\tasks\cfsrc\acc_8.3.24 -Object "Catalog.Устаревший" -DryRun
+### Проверка ссылок и dry run
 
-# Удалить объект без ссылок
-... -ConfigDir C:\WS\tasks\cfsrc\acc_8.3.24 -Object "Catalog.Устаревший"
-
-# Принудительно удалить несмотря на ссылки
-... -ConfigDir C:\WS\tasks\cfsrc\acc_8.3.24 -Object "Catalog.Устаревший" -Force
-
-# Только дерегистрировать (файлы оставить)
-... -ConfigDir C:\WS\tasks\cfsrc\acc_8.3.24 -Object "Report.Старый" -KeepFiles
-
-# Удалить общий модуль
-... -ConfigDir src -Object "CommonModule.МойМодуль"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.remove",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigDir": "C:\\WS\\tasks\\cfsrc\\acc_8.3.24",
+      "Object": "Catalog.Устаревший",
+      "dryRun": true
+    }
+  }
+}
 ```
 
+### Удалить объект без ссылок
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.remove",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigDir": "C:\\WS\\tasks\\cfsrc\\acc_8.3.24",
+      "Object": "Catalog.Устаревший",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Принудительно удалить несмотря на ссылки
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.remove",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigDir": "C:\\WS\\tasks\\cfsrc\\acc_8.3.24",
+      "Object": "Catalog.Устаревший",
+      "Force": true,
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Только дерегистрировать, файлы оставить
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.remove",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigDir": "C:\\WS\\tasks\\cfsrc\\acc_8.3.24",
+      "Object": "Report.Старый",
+      "KeepFiles": true,
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Удалить общий модуль
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.remove",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigDir": "src",
+      "Object": "CommonModule.МойМодуль",
+      "dryRun": false
+    }
+  }
+}
+```

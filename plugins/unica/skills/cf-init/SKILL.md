@@ -14,12 +14,12 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.cf.init`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.cf.init`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Создаёт scaffold исходников пустой конфигурации 1С: `Configuration.xml`, `Languages/Русский.xml`.
 
-## Параметры и команда
+## MCP параметры
 
 | Параметр | Описание |
 |----------|----------|
@@ -30,27 +30,117 @@ allowed-tools:
 | `Vendor` | Поставщик |
 | `CompatibilityMode` | Режим совместимости (default: `Version8_3_24`) |
 
-```powershell
-powershell.exe -NoProfile -File scripts/cf-init.ps1 -Name "МояКонфигурация"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.init",
+    "arguments": {
+      "cwd": "<workspace>",
+      "Name": "DemoConfiguration",
+      "Synonym": "Демо конфигурация",
+      "OutputDir": "src",
+      "Vendor": "Ingvar Consulting",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## Примеры
 
-```powershell
-# Базовая конфигурация
-... -Name МояКонфигурация -Synonym "Моя конфигурация" -OutputDir test-tmp/cf
+### Базовая конфигурация
 
-# С версией и поставщиком
-... -Name TestCfg -Synonym "Тестовая" -Version "1.0.0.1" -Vendor "Фирма 1С" -OutputDir test-tmp/cf2
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.init",
+    "arguments": {
+      "cwd": "<workspace>",
+      "Name": "МояКонфигурация",
+      "Synonym": "Моя конфигурация",
+      "OutputDir": "test-tmp/cf",
+      "dryRun": false
+    }
+  }
+}
+```
 
-# Другой режим совместимости
-... -Name TestCfg -CompatibilityMode Version8_3_27 -OutputDir test-tmp/cf3
+### С версией и поставщиком
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.init",
+    "arguments": {
+      "cwd": "<workspace>",
+      "Name": "TestCfg",
+      "Synonym": "Тестовая",
+      "Version": "1.0.0.1",
+      "Vendor": "Фирма 1С",
+      "OutputDir": "test-tmp/cf2",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Другой режим совместимости
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.init",
+    "arguments": {
+      "cwd": "<workspace>",
+      "Name": "TestCfg",
+      "CompatibilityMode": "Version8_3_27",
+      "OutputDir": "test-tmp/cf3",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## Верификация
 
+После создания проверь каталог конфигурации через MCP `unica` read-only инструменты.
+
+### Проверить созданную структуру
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigPath": "test-tmp/cf"
+    }
+  }
+}
 ```
-/cf-init TestConfig -OutputDir test-tmp/cf
-/cf-info test-tmp/cf          — проверить созданное
-/cf-validate test-tmp/cf      — валидировать
+
+### Валидировать XML конфигурации
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.cf.validate",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ConfigPath": "test-tmp/cf"
+    }
+  }
+}
 ```

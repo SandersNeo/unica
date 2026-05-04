@@ -14,7 +14,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.skd.validate`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.skd.validate`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Проверяет структурную корректность Template.xml схемы компоновки данных. Выявляет ошибки формата, битые ссылки, дубликаты имён.
@@ -28,9 +28,36 @@ allowed-tools:
 | MaxErrors    | нет   | 20      | Остановиться после N ошибок                             |
 | OutFile      | нет   | —       | Записать результат в файл                               |
 
-## Команда
+## MCP вызов
 
-```powershell
-powershell.exe -NoProfile -File scripts/skd-validate.ps1 -TemplatePath "src/МойОтчёт/Templates/ОсновнаяСхема"
-powershell.exe -NoProfile -File scripts/skd-validate.ps1 -TemplatePath "Catalogs/Номенклатура/Templates/СКД/Ext/Template.xml"
+### Каталог макета СКД
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.validate",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "src/МойОтчёт/Templates/ОсновнаяСхема"
+    }
+  }
+}
+```
+
+### Прямой путь к Template.xml
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.validate",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "Catalogs/Номенклатура/Templates/СКД/Ext/Template.xml"
+    }
+  }
+}
 ```

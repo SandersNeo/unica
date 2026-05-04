@@ -15,20 +15,32 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.role.compile`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.role.compile`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Принимает JSON-определение роли → генерирует `Roles/Имя.xml` (метаданные) и `Roles/Имя/Ext/Rights.xml` (права). UUID автоматически.
 
-## Параметры и команда
+## MCP параметры
 
 | Параметр | Описание |
 |----------|----------|
 | `JsonPath` | Путь к JSON-определению роли |
 | `OutputDir` | Корень выгрузки конфигурации (где `Configuration.xml`, `Roles/` и т.д.) |
 
-```powershell
-powershell.exe -NoProfile -File scripts/role-compile.ps1 -JsonPath "<json>" -OutputDir "<ConfigDir>"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.role.compile",
+    "arguments": {
+      "cwd": "<workspace>",
+      "JsonPath": "roles/read-products.json",
+      "OutputDir": "src",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 Создаёт `{OutputDir}/Roles/Имя.xml` и `{OutputDir}/Roles/Имя/Ext/Rights.xml`. Регистрирует `<Role>` в `Configuration.xml`.
@@ -110,7 +122,35 @@ powershell.exe -NoProfile -File scripts/role-compile.ps1 -JsonPath "<json>" -Out
 
 ## Верификация
 
+### Проверка корректности XML, прав и RLS
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.role.validate",
+    "arguments": {
+      "cwd": "<workspace>",
+      "RightsPath": "<RightsPath>",
+      "MetadataPath": "<MetadataPath>"
+    }
+  }
+}
 ```
-/role-validate <RightsPath> [MetadataPath]  — проверка корректности XML, прав, RLS
-/role-info <RightsPath>                     — визуальная сводка структуры
+
+### Сводка структуры роли
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.role.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "RightsPath": "<RightsPath>"
+    }
+  }
+}
 ```

@@ -1,0 +1,23 @@
+{
+  "columns": 2,
+  "defaultWidth": 12,
+  "areas": [
+    {
+      "name": "Header",
+      "rows": [
+        {
+          "cells": [
+            {
+              "col": 1,
+              "text": "Code"
+            },
+            {
+              "col": 2,
+              "text": "Name"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

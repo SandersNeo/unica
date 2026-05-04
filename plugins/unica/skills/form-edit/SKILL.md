@@ -15,7 +15,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.form.edit`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.form.edit`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Добавляет элементы, реквизиты и/или команды в существующий Form.xml. Автоматически выделяет ID из правильного пула, генерирует companion-элементы (ContextMenu, ExtendedTooltip, и др.) и обработчики событий.
@@ -33,10 +33,22 @@ allowed-tools:
 | FormPath  | да           | Путь к существующему Form.xml    |
 | JsonPath  | да           | Путь к JSON с описанием добавлений |
 
-## Команда
+## MCP вызов
 
-```powershell
-powershell.exe -NoProfile -File scripts/form-edit.ps1 -FormPath "<путь>" -JsonPath "<путь>"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.form.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "FormPath": "src/Catalogs/Номенклатура/Forms/ФормаЭлемента",
+      "JsonPath": "forms/patch-add-article.json",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## JSON формат

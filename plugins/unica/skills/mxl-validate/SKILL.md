@@ -14,7 +14,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.mxl.validate`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.mxl.validate`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Проверяет Template.xml на структурные ошибки: индексы, ссылки на палитры, диапазоны именованных областей и объединений.
@@ -27,10 +27,36 @@ allowed-tools:
 | Detailed      | нет   | —       | Подробный вывод (все проверки, включая успешные) |
 | MaxErrors     | нет   | 20      | Остановиться после N ошибок                |
 
-## Команда
+## MCP вызов
 
-```powershell
-powershell.exe -NoProfile -File scripts/mxl-validate.ps1 -TemplatePath "Catalogs/Номенклатура/Templates/Макет"
-powershell.exe -NoProfile -File scripts/mxl-validate.ps1 -TemplatePath "src/МояОбработка/Templates/ПечатнаяФорма"
+### Каталог макета
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.mxl.validate",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "Catalogs/Номенклатура/Templates/Макет"
+    }
+  }
+}
 ```
 
+### Макет внешней обработки
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.mxl.validate",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "src/МояОбработка/Templates/ПечатнаяФорма"
+    }
+  }
+}
+```

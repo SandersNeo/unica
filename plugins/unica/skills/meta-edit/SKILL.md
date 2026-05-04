@@ -15,32 +15,49 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.meta.edit`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.meta.edit`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Атомарные операции модификации существующих XML объектов метаданных.
 
-## Команда
+## MCP вызов
 
-### Inline mode (простые операции)
+### Inline mode: простая операция
 
-```powershell
-powershell.exe -NoProfile -File scripts/meta-edit.ps1 -ObjectPath "<path>" -Operation <op> -Value "<val>"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "<path>",
+      "Operation": "<op>",
+      "Value": "<val>",
+      "dryRun": false
+    }
+  }
+}
 ```
 
-### JSON mode (сложные/комбинированные)
+### JSON mode: файл операций
 
-```powershell
-powershell.exe -NoProfile -File scripts/meta-edit.ps1 -DefinitionFile "<json>" -ObjectPath "<path>"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "<path>",
+      "DefinitionFile": "<json>",
+      "dryRun": false
+    }
+  }
+}
 ```
-
-| Параметр | Описание |
-|----------|----------|
-| ObjectPath | XML-файл или директория объекта (обязательный, авторезолв `<dirName>.xml`) |
-| Operation | Inline-операция (альтернатива DefinitionFile) |
-| Value | Значение для inline-операции |
-| DefinitionFile | JSON-файл с операциями (альтернатива Operation) |
-| NoValidate | Не запускать meta-validate после правки |
 
 ## Операции — сводная таблица
 
@@ -84,32 +101,169 @@ Batch через `;;` во всех операциях. Подробный си�
 
 ## Быстрые примеры
 
-```powershell
-# Добавить реквизиты
--Operation add-attribute -Value "Комментарий: Строка(200) ;; Сумма: Число(15,2) | index"
+### Добавить реквизиты
 
-# Составной тип (несколько типов через +)
--Operation add-attribute -Value "Значение: Строка + Число(15,2) + Дата + CatalogRef.Контрагенты"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "src/Catalogs/Контрагенты/Контрагенты.xml",
+      "Operation": "add-attribute",
+      "Value": "Комментарий: Строка(200) ;; Сумма: Число(15,2) | index",
+      "dryRun": false
+    }
+  }
+}
+```
 
-# Добавить ТЧ с реквизитами
--Operation add-ts -Value "Товары: Ном: CatalogRef.Ном | req, Кол: Число(15,3), Цена: Число(15,2)"
+### Составной тип
 
-# Удалить реквизит
--Operation remove-attribute -Value "УстаревшийРеквизит"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "src/Catalogs/Контрагенты/Контрагенты.xml",
+      "Operation": "add-attribute",
+      "Value": "Значение: Строка + Число(15,2) + Дата + CatalogRef.Контрагенты",
+      "dryRun": false
+    }
+  }
+}
+```
 
-# Переименовать + сменить тип
--Operation modify-attribute -Value "СтароеИмя: name=НовоеИмя, type=Строка(500)"
+### Добавить табличную часть с реквизитами
 
-# Изменить свойства объекта
--Operation modify-property -Value "CodeLength=11 ;; DescriptionLength=150"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "src/Documents/ЗаказПокупателя/ЗаказПокупателя.xml",
+      "Operation": "add-ts",
+      "Value": "Товары: Ном: CatalogRef.Ном | req, Кол: Число(15,3), Цена: Число(15,2)",
+      "dryRun": false
+    }
+  }
+}
+```
 
-# Владельцы справочника
--Operation set-owners -Value "Catalog.Контрагенты ;; Catalog.Организации"
+### Удалить реквизит
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "src/Catalogs/Контрагенты/Контрагенты.xml",
+      "Operation": "remove-attribute",
+      "Value": "УстаревшийРеквизит",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Переименовать и сменить тип
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "src/Catalogs/Контрагенты/Контрагенты.xml",
+      "Operation": "modify-attribute",
+      "Value": "СтароеИмя: name=НовоеИмя, type=Строка(500)",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Изменить свойства объекта
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "src/Catalogs/Контрагенты/Контрагенты.xml",
+      "Operation": "modify-property",
+      "Value": "CodeLength=11 ;; DescriptionLength=150",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Владельцы справочника
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.edit",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "src/Catalogs/ДоговорыКонтрагентов/ДоговорыКонтрагентов.xml",
+      "Operation": "set-owners",
+      "Value": "Catalog.Контрагенты ;; Catalog.Организации",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## Верификация
 
+### Валидация после редактирования
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.validate",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "<ObjectPath>"
+    }
+  }
+}
 ```
-/meta-validate <ObjectPath>    — валидация после редактирования
-/meta-info <ObjectPath>        — визуальная сводка
+
+### Сводка объекта
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.meta.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "<ObjectPath>"
+    }
+  }
+}
 ```

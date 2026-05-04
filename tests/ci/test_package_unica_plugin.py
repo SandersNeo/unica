@@ -4,6 +4,8 @@ import importlib.util
 import json
 import os
 import stat
+import subprocess
+from unittest.mock import patch
 import tempfile
 import unittest
 from pathlib import Path
@@ -177,6 +179,125 @@ class PackageUnicaPluginTests(unittest.TestCase):
 
             copied_mode = (dest / "v8-runner").stat().st_mode
             self.assertTrue(copied_mode & stat.S_IXUSR)
+
+    @unittest.skipIf(os.name == "nt", "generated shell launcher smoke is POSIX-only")
+    def test_generated_marketplace_runs_packaged_unica_help(self) -> None:
+        module = load_package_module()
+        repo_root = Path(__file__).resolve().parents[2]
+        target = "darwin-arm64" if os.uname().sysname == "Darwin" else "linux-x64"
+        target_triple = {
+            "darwin-arm64": "aarch64-apple-darwin",
+            "linux-x64": "x86_64-unknown-linux-gnu",
+        }[target]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            tools_root = root / "tools"
+            bundle = tools_root / f"unica-tools-{target}"
+            bin_dir = bundle / "bin" / target
+            bin_dir.mkdir(parents=True)
+            binary = bin_dir / "unica"
+            binary.write_text(
+                "#!/usr/bin/env sh\n"
+                "if [ \"$1\" = \"--help\" ]; then\n"
+                "  echo 'unica 0.3.11'\n"
+                "  echo 'stdio MCP orchestrator for Unica workflows'\n"
+                "  exit 0\n"
+                "fi\n"
+                "exit 64\n",
+                encoding="utf-8",
+            )
+            binary.chmod(0o755)
+            (bundle / "tools.json").write_text(
+                json.dumps(
+                    {
+                        "target": target,
+                        "targetTriple": target_triple,
+                        "tools": [
+                            {
+                                "name": "unica",
+                                "version": "0.3.11",
+                                "repository": "https://github.com/IngvarConsulting/unica",
+                                "upstreamUrl": "https://github.com/IngvarConsulting/unica/releases/tag/workspace",
+                                "sourceTag": "workspace",
+                                "sourceCommit": "workspace",
+                                "license": "LGPL-3.0-or-later",
+                                "targetTriple": target_triple,
+                                "binaryPath": f"bin/{target}/unica",
+                                "sha256": module.sha256(binary),
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            lock_file = root / "tools.lock.json"
+            lock_file.write_text(
+                json.dumps(
+                    {
+                        "schemaVersion": 1,
+                        "targets": {target: {"targetTriple": target_triple}},
+                        "tools": [
+                            {
+                                "name": "unica",
+                                "version": "0.3.11",
+                                "repository": "https://github.com/IngvarConsulting/unica",
+                                "sourceTag": "workspace",
+                                "sourceCommit": "workspace",
+                                "license": "LGPL-3.0-or-later",
+                                "assets": {target: {"assetName": "unica"}},
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            out_dir = root / "out"
+
+            argv = [
+                "package-unica-plugin.py",
+                "--repo-root",
+                str(repo_root),
+                "--tools-root",
+                str(tools_root),
+                "--lock-file",
+                str(lock_file),
+                "--out-dir",
+                str(out_dir),
+                "--target",
+                target,
+                "--allow-partial-targets",
+                "--no-archives",
+            ]
+            with patch("sys.argv", argv):
+                module.main()
+
+            packaged_mcp = json.loads(
+                (out_dir / "marketplace" / "plugins" / "unica" / ".mcp.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(sorted(packaged_mcp["mcpServers"]), ["unica"])
+
+            result = subprocess.run(
+                [
+                    str(
+                        out_dir
+                        / "marketplace"
+                        / "plugins"
+                        / "unica"
+                        / "scripts"
+                        / "run-unica.sh"
+                    ),
+                    "--help",
+                ],
+                cwd=out_dir / "marketplace",
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+            )
+            self.assertIn("unica 0.3.11", result.stdout)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 pub mod internal_adapters;
 pub mod legacy_scripts;
+pub mod native_operations;
 pub mod workspace_state;
 
 use serde::Serialize;

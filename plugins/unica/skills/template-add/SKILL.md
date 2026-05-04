@@ -17,7 +17,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.template.add`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.template.add`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Создаёт макет указанного типа и регистрирует его в корневом XML объекта.
@@ -37,18 +37,48 @@ allowed-tools:
 | SrcDir        | нет          | `src`           | Путь к папке типа объектов (`Reports`, `DataProcessors`, `Catalogs`, `Documents`...), внутри которой лежит `<ObjectName>.xml`. Дефолт `src` подходит для каталогов с внешними обработками/отчётами, лежащими рядом |
 | -SetMainSKD   | нет          | —               | Принудительно установить MainDataCompositionSchema |
 
-## Команда
+## MCP вызов
 
-```powershell
-powershell.exe -NoProfile -File scripts/add-template.ps1 -ObjectName "<ObjectName>" -TemplateName "<TemplateName>" -TemplateType "<TemplateType>" [-Synonym "<Synonym>"] [-SrcDir "<SrcDir>"] [-SetMainSKD]
+### Добавить пустой табличный макет печатной формы
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.template.add",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectName": "ОтчетПродажи",
+      "TemplateName": "ПФ_MXL_Продажи",
+      "TemplateType": "SpreadsheetDocument",
+      "SrcDir": "src/Reports",
+      "Synonym": "Печатная форма продажи",
+      "dryRun": false
+    }
+  }
+}
 ```
 
-## Пример
+### Добавить основную СКД к отчёту в расширении
 
-Добавить основную СКД к отчёту в расширении:
-
-```powershell
-powershell.exe -NoProfile -File scripts/add-template.ps1 -ObjectName "ОтчётПродажи" -TemplateName "ОсновнаяСхемаКомпоновкиДанных" -TemplateType "DataCompositionSchema" -SrcDir "src/cfe/МоёРасширение/Reports"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.template.add",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectName": "ОтчётПродажи",
+      "TemplateName": "ОсновнаяСхемаКомпоновкиДанных",
+      "TemplateType": "DataCompositionSchema",
+      "SrcDir": "src/cfe/МоёРасширение/Reports",
+      "SetMainSKD": true,
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## Маппинг типов

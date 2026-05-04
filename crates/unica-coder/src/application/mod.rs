@@ -1,8 +1,9 @@
-use crate::domain::cache::CacheReport;
+use crate::domain::cache::{CacheAccess, CacheReport};
 use crate::domain::events::{DomainEvent, DomainEventKind};
 use crate::domain::workspace::WorkspaceContext;
 use crate::infrastructure::internal_adapters::{CliAdapter, StandardsAdapter};
 use crate::infrastructure::legacy_scripts::LegacyScriptAdapter;
+use crate::infrastructure::native_operations::NativeOperationAdapter;
 use crate::infrastructure::workspace_state::WorkspaceStateRepository;
 use crate::infrastructure::AdapterOutcome;
 use serde::Serialize;
@@ -15,6 +16,7 @@ pub struct ToolSpec {
     pub name: &'static str,
     pub description: &'static str,
     pub mutating: bool,
+    pub cache_access: CacheAccess,
     pub handler: ToolHandler,
 }
 
@@ -23,6 +25,10 @@ pub enum ToolHandler {
     LegacyScript {
         skill: &'static str,
         script: &'static str,
+        event: Option<DomainEventKind>,
+    },
+    NativeOperation {
+        operation: &'static str,
         event: Option<DomainEventKind>,
     },
     ProjectStatus,
@@ -92,12 +98,17 @@ pub fn tools() -> Vec<ToolSpec> {
             name: "unica.project.status",
             description: "Inspect current Unica workspace, source set, and cache state.",
             mutating: false,
+            cache_access: CacheAccess::default(),
             handler: ToolHandler::ProjectStatus,
         },
         ToolSpec {
             name: "unica.build.dump",
             description: "Dump source set through the internal build/runtime adapter.",
             mutating: true,
+            cache_access: CacheAccess {
+                reads: &[],
+                writes: &["workspace_graph", "metadata_graph"],
+            },
             handler: ToolHandler::BuildRuntime {
                 command: &["dump"],
                 event: Some(DomainEventKind::SourceSetChanged),
@@ -107,6 +118,10 @@ pub fn tools() -> Vec<ToolSpec> {
             name: "unica.build.load",
             description: "Load/build XML source set through the internal build/runtime adapter.",
             mutating: true,
+            cache_access: CacheAccess {
+                reads: &[],
+                writes: &["workspace_graph", "metadata_graph"],
+            },
             handler: ToolHandler::BuildRuntime {
                 command: &["build"],
                 event: Some(DomainEventKind::BuildCompleted),
@@ -117,6 +132,10 @@ pub fn tools() -> Vec<ToolSpec> {
             description:
                 "Apply built configuration changes through the internal build/runtime adapter.",
             mutating: true,
+            cache_access: CacheAccess {
+                reads: &[],
+                writes: &["workspace_graph", "metadata_graph"],
+            },
             handler: ToolHandler::BuildRuntime {
                 command: &["build", "--update"],
                 event: Some(DomainEventKind::BuildCompleted),
@@ -126,6 +145,7 @@ pub fn tools() -> Vec<ToolSpec> {
             name: "unica.build.make",
             description: "Create CF/CFE artifact through the internal build/runtime adapter.",
             mutating: true,
+            cache_access: CacheAccess::default(),
             handler: ToolHandler::BuildRuntime {
                 command: &["make"],
                 event: None,
@@ -136,6 +156,7 @@ pub fn tools() -> Vec<ToolSpec> {
             description:
                 "Launch 1C runtime or Designer through the internal build/runtime adapter.",
             mutating: true,
+            cache_access: CacheAccess::default(),
             handler: ToolHandler::BuildRuntime {
                 command: &["launch"],
                 event: None,
@@ -145,6 +166,10 @@ pub fn tools() -> Vec<ToolSpec> {
             name: "unica.code.search",
             description: "Search BSL code through the internal code index adapter.",
             mutating: false,
+            cache_access: CacheAccess {
+                reads: &["bsl_index"],
+                writes: &[],
+            },
             handler: ToolHandler::CodeAdapter {
                 command: &["search"],
             },
@@ -153,6 +178,10 @@ pub fn tools() -> Vec<ToolSpec> {
             name: "unica.code.diagnostics",
             description: "Run BSL diagnostics through the internal code analysis adapter.",
             mutating: false,
+            cache_access: CacheAccess {
+                reads: &["bsl_diagnostics"],
+                writes: &[],
+            },
             handler: ToolHandler::CodeAdapter {
                 command: &["analyze"],
             },
@@ -161,6 +190,7 @@ pub fn tools() -> Vec<ToolSpec> {
             name: "unica.standards.search",
             description: "Search 1C standards through the internal standards adapter.",
             mutating: false,
+            cache_access: CacheAccess::default(),
             handler: ToolHandler::StandardsAdapter {
                 operation: "search",
             },
@@ -170,6 +200,7 @@ pub fn tools() -> Vec<ToolSpec> {
             description:
                 "Explain 1C diagnostics or standards through the internal standards adapter.",
             mutating: false,
+            cache_access: CacheAccess::default(),
             handler: ToolHandler::StandardsAdapter {
                 operation: "explain",
             },
@@ -203,6 +234,14 @@ fn call_tool(spec: ToolSpec, args: &Map<String, Value>) -> Result<OperationResul
             dry_run,
             spec.mutating,
         )?,
+        ToolHandler::NativeOperation { operation, .. } => NativeOperationAdapter::invoke(
+            operation,
+            spec.name,
+            args,
+            &context,
+            dry_run,
+            spec.mutating,
+        )?,
         ToolHandler::ProjectStatus => project_status(&context),
         ToolHandler::BuildRuntime { command, .. } => CliAdapter::new(
             "run-v8-runner.sh",
@@ -224,7 +263,7 @@ fn call_tool(spec: ToolSpec, args: &Map<String, Value>) -> Result<OperationResul
     } else {
         Vec::new()
     };
-    let cache = state_repo.report(&context, &events, dry_run)?;
+    let cache = state_repo.report(&context, &events, dry_run, spec.cache_access)?;
 
     Ok(OperationResult {
         ok: outcome.ok,
@@ -247,6 +286,9 @@ fn should_emit_events(spec: ToolSpec, dry_run: bool, outcome: &AdapterOutcome) -
 fn domain_events(spec: ToolSpec) -> Vec<DomainEvent> {
     match spec.handler {
         ToolHandler::LegacyScript {
+            event: Some(event), ..
+        } => vec![DomainEvent::new(event, spec.name)],
+        ToolHandler::NativeOperation {
             event: Some(event), ..
         } => vec![DomainEvent::new(event, spec.name)],
         ToolHandler::BuildRuntime {
@@ -273,338 +315,457 @@ fn project_status(context: &WorkspaceContext) -> AdapterOutcome {
 
 fn configuration_tools() -> Vec<ToolSpec> {
     vec![
-        legacy(
-            "unica.cf.edit",
-            "cf-edit",
-            "cf-edit.py",
-            "Edit root Configuration.xml properties, ChildObjects, panels, and home page.",
-            true,
-            Some(DomainEventKind::ConfigXmlChanged),
-        ),
-        legacy(
-            "unica.cf.info",
-            "cf-info",
-            "cf-info.py",
-            "Inspect root Configuration.xml.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.cf.init",
-            "cf-init",
-            "cf-init.py",
-            "Create empty 1C configuration XML scaffold.",
-            true,
-            Some(DomainEventKind::ConfigXmlChanged),
-        ),
-        legacy(
-            "unica.cf.validate",
-            "cf-validate",
-            "cf-validate.py",
-            "Validate root configuration XML structure.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.cfe.borrow",
-            "cfe-borrow",
-            "cfe-borrow.py",
-            "Borrow configuration objects/forms into an extension.",
-            true,
-            Some(DomainEventKind::CfeChanged),
-        ),
-        legacy(
-            "unica.cfe.diff",
-            "cfe-diff",
-            "cfe-diff.py",
-            "Inspect extension contents and transferred insertion blocks.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.cfe.init",
-            "cfe-init",
-            "cfe-init.py",
-            "Create extension XML scaffold.",
-            true,
-            Some(DomainEventKind::CfeChanged),
-        ),
-        legacy(
-            "unica.cfe.patch_method",
-            "cfe-patch-method",
-            "cfe-patch-method.py",
-            "Generate a CFE method interceptor.",
-            true,
-            Some(DomainEventKind::ModuleChanged),
-        ),
-        legacy(
-            "unica.cfe.validate",
-            "cfe-validate",
-            "cfe-validate.py",
-            "Validate extension XML structure.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.meta.compile",
-            "meta-compile",
-            "meta-compile.py",
-            "Compile metadata object XML from JSON DSL.",
-            true,
-            Some(DomainEventKind::MetadataChanged),
-        ),
-        legacy(
-            "unica.meta.edit",
-            "meta-edit",
-            "meta-edit.py",
-            "Edit metadata object XML.",
-            true,
-            Some(DomainEventKind::MetadataChanged),
-        ),
-        legacy(
-            "unica.meta.info",
-            "meta-info",
-            "meta-info.py",
-            "Inspect metadata object XML.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.meta.remove",
-            "meta-remove",
-            "meta-remove.py",
-            "Remove metadata object XML and registration.",
-            true,
-            Some(DomainEventKind::MetadataChanged),
-        ),
-        legacy(
-            "unica.meta.validate",
-            "meta-validate",
-            "meta-validate.py",
-            "Validate metadata object XML.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.form.add",
-            "form-add",
-            "form-add.py",
-            "Add managed form metadata and files.",
-            true,
-            Some(DomainEventKind::FormChanged),
-        ),
-        legacy(
-            "unica.form.compile",
-            "form-compile",
-            "form-compile.py",
-            "Compile managed Form.xml from JSON DSL or metadata.",
-            true,
-            Some(DomainEventKind::FormChanged),
-        ),
-        legacy(
-            "unica.form.edit",
-            "form-edit",
-            "form-edit.py",
-            "Edit managed Form.xml elements, attributes, and commands.",
-            true,
-            Some(DomainEventKind::FormChanged),
-        ),
-        legacy(
-            "unica.form.info",
-            "form-info",
-            "form-info.py",
-            "Inspect managed Form.xml.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.form.remove",
-            "form-remove",
-            "remove-form.py",
-            "Remove a managed form and registration.",
-            true,
-            Some(DomainEventKind::FormChanged),
-        ),
-        legacy(
-            "unica.form.validate",
-            "form-validate",
-            "form-validate.py",
-            "Validate managed Form.xml.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.interface.edit",
-            "interface-edit",
-            "interface-edit.py",
-            "Edit subsystem CommandInterface.xml.",
-            true,
-            Some(DomainEventKind::SubsystemChanged),
-        ),
-        legacy(
-            "unica.interface.validate",
-            "interface-validate",
-            "interface-validate.py",
-            "Validate CommandInterface.xml.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.subsystem.compile",
-            "subsystem-compile",
-            "subsystem-compile.py",
-            "Compile subsystem XML from JSON DSL.",
-            true,
-            Some(DomainEventKind::SubsystemChanged),
-        ),
-        legacy(
-            "unica.subsystem.edit",
-            "subsystem-edit",
-            "subsystem-edit.py",
-            "Edit subsystem XML content and hierarchy.",
-            true,
-            Some(DomainEventKind::SubsystemChanged),
-        ),
-        legacy(
-            "unica.subsystem.info",
-            "subsystem-info",
-            "subsystem-info.py",
-            "Inspect subsystem XML and command interface.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.subsystem.validate",
-            "subsystem-validate",
-            "subsystem-validate.py",
-            "Validate subsystem XML.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.template.add",
-            "template-add",
-            "add-template.py",
-            "Add a template to an object and register it.",
-            true,
-            Some(DomainEventKind::TemplateChanged),
-        ),
-        legacy(
-            "unica.template.remove",
-            "template-remove",
-            "remove-template.py",
-            "Remove a template from an object.",
-            true,
-            Some(DomainEventKind::TemplateChanged),
-        ),
-        legacy(
-            "unica.skd.compile",
-            "skd-compile",
-            "skd-compile.py",
-            "Compile Data Composition Schema XML from JSON DSL.",
-            true,
-            Some(DomainEventKind::SkdChanged),
-        ),
-        legacy(
-            "unica.skd.edit",
-            "skd-edit",
-            "skd-edit.py",
-            "Edit Data Composition Schema Template.xml.",
-            true,
-            Some(DomainEventKind::SkdChanged),
-        ),
-        legacy(
-            "unica.skd.info",
-            "skd-info",
-            "skd-info.py",
-            "Inspect Data Composition Schema Template.xml.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.skd.validate",
-            "skd-validate",
-            "skd-validate.py",
-            "Validate Data Composition Schema Template.xml.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.mxl.compile",
-            "mxl-compile",
-            "mxl-compile.py",
-            "Compile spreadsheet Template.xml from JSON DSL.",
-            true,
-            Some(DomainEventKind::MxlChanged),
-        ),
-        legacy(
-            "unica.mxl.decompile",
-            "mxl-decompile",
-            "mxl-decompile.py",
-            "Decompile spreadsheet Template.xml to JSON DSL.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.mxl.info",
-            "mxl-info",
-            "mxl-info.py",
-            "Inspect spreadsheet Template.xml.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.mxl.validate",
-            "mxl-validate",
-            "mxl-validate.py",
-            "Validate spreadsheet Template.xml.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.role.compile",
-            "role-compile",
-            "role-compile.py",
-            "Compile role metadata and Rights.xml from JSON DSL.",
-            true,
-            Some(DomainEventKind::RoleChanged),
-        ),
-        legacy(
-            "unica.role.info",
-            "role-info",
-            "role-info.py",
-            "Inspect role Rights.xml.",
-            false,
-            None,
-        ),
-        legacy(
-            "unica.role.validate",
-            "role-validate",
-            "role-validate.py",
-            "Validate role Rights.xml.",
-            false,
-            None,
-        ),
+        ToolSpec {
+            name: "unica.cf.edit",
+            description:
+                "Edit root Configuration.xml properties, ChildObjects, panels, and home page.",
+            mutating: true,
+            cache_access: cache_access_for("cf-edit", Some(DomainEventKind::ConfigXmlChanged)),
+            handler: ToolHandler::NativeOperation {
+                operation: "cf-edit",
+                event: Some(DomainEventKind::ConfigXmlChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.cf.info",
+            description: "Inspect root Configuration.xml.",
+            mutating: false,
+            cache_access: cache_access_for("cf-info", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "cf-info",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.cf.init",
+            description: "Create empty 1C configuration XML scaffold.",
+            mutating: true,
+            cache_access: cache_access_for("cf-init", Some(DomainEventKind::ConfigXmlChanged)),
+            handler: ToolHandler::NativeOperation {
+                operation: "cf-init",
+                event: Some(DomainEventKind::ConfigXmlChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.cf.validate",
+            description: "Validate root configuration XML structure.",
+            mutating: false,
+            cache_access: cache_access_for("cf-validate", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "cf-validate",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.cfe.borrow",
+            description: "Borrow configuration objects/forms into an extension.",
+            mutating: true,
+            cache_access: cache_access_for("cfe-borrow", Some(DomainEventKind::CfeChanged)),
+            handler: ToolHandler::NativeOperation {
+                operation: "cfe-borrow",
+                event: Some(DomainEventKind::CfeChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.cfe.diff",
+            description: "Inspect extension contents and transferred insertion blocks.",
+            mutating: false,
+            cache_access: cache_access_for("cfe-diff", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "cfe-diff",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.cfe.init",
+            description: "Create extension XML scaffold.",
+            mutating: true,
+            cache_access: cache_access_for("cfe-init", Some(DomainEventKind::CfeChanged)),
+            handler: ToolHandler::NativeOperation {
+                operation: "cfe-init",
+                event: Some(DomainEventKind::CfeChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.cfe.patch_method",
+            description: "Generate a CFE method interceptor.",
+            mutating: true,
+            cache_access: cache_access_for(
+                "cfe-patch-method",
+                Some(DomainEventKind::ModuleChanged),
+            ),
+            handler: ToolHandler::NativeOperation {
+                operation: "cfe-patch-method",
+                event: Some(DomainEventKind::ModuleChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.cfe.validate",
+            description: "Validate extension XML structure.",
+            mutating: false,
+            cache_access: cache_access_for("cfe-validate", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "cfe-validate",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.meta.compile",
+            description: "Compile metadata object XML from JSON DSL.",
+            mutating: true,
+            cache_access: cache_access_for("meta-compile", Some(DomainEventKind::MetadataChanged)),
+            handler: ToolHandler::NativeOperation {
+                operation: "meta-compile",
+                event: Some(DomainEventKind::MetadataChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.meta.edit",
+            description: "Edit metadata object XML.",
+            mutating: true,
+            cache_access: cache_access_for("meta-edit", Some(DomainEventKind::MetadataChanged)),
+            handler: ToolHandler::NativeOperation {
+                operation: "meta-edit",
+                event: Some(DomainEventKind::MetadataChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.meta.info",
+            description: "Inspect metadata object XML.",
+            mutating: false,
+            cache_access: cache_access_for("meta-info", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "meta-info",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.meta.remove",
+            description: "Remove metadata object XML and registration.",
+            mutating: true,
+            cache_access: cache_access_for("meta-remove", Some(DomainEventKind::MetadataChanged)),
+            handler: ToolHandler::NativeOperation {
+                operation: "meta-remove",
+                event: Some(DomainEventKind::MetadataChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.meta.validate",
+            description: "Validate metadata object XML.",
+            mutating: false,
+            cache_access: cache_access_for("meta-validate", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "meta-validate",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.form.add",
+            description: "Add managed form metadata and files.",
+            mutating: true,
+            cache_access: cache_access_for("form-add", Some(DomainEventKind::FormChanged)),
+            handler: ToolHandler::NativeOperation {
+                operation: "form-add",
+                event: Some(DomainEventKind::FormChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.form.compile",
+            description: "Compile managed Form.xml from JSON DSL or metadata.",
+            mutating: true,
+            cache_access: cache_access_for("form-compile", Some(DomainEventKind::FormChanged)),
+            handler: ToolHandler::NativeOperation {
+                operation: "form-compile",
+                event: Some(DomainEventKind::FormChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.form.edit",
+            description: "Edit managed Form.xml elements, attributes, and commands.",
+            mutating: true,
+            cache_access: cache_access_for("form-edit", Some(DomainEventKind::FormChanged)),
+            handler: ToolHandler::NativeOperation {
+                operation: "form-edit",
+                event: Some(DomainEventKind::FormChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.form.info",
+            description: "Inspect managed Form.xml.",
+            mutating: false,
+            cache_access: cache_access_for("form-info", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "form-info",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.form.remove",
+            description: "Remove a managed form and registration.",
+            mutating: true,
+            cache_access: cache_access_for("form-remove", Some(DomainEventKind::FormChanged)),
+            handler: ToolHandler::NativeOperation {
+                operation: "form-remove",
+                event: Some(DomainEventKind::FormChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.form.validate",
+            description: "Validate managed Form.xml.",
+            mutating: false,
+            cache_access: cache_access_for("form-validate", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "form-validate",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.interface.edit",
+            description: "Edit subsystem CommandInterface.xml.",
+            mutating: true,
+            cache_access: cache_access_for(
+                "interface-edit",
+                Some(DomainEventKind::SubsystemChanged),
+            ),
+            handler: ToolHandler::NativeOperation {
+                operation: "interface-edit",
+                event: Some(DomainEventKind::SubsystemChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.interface.validate",
+            description: "Validate CommandInterface.xml.",
+            mutating: false,
+            cache_access: cache_access_for("interface-validate", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "interface-validate",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.subsystem.compile",
+            description: "Compile subsystem XML from JSON DSL.",
+            mutating: true,
+            cache_access: cache_access_for(
+                "subsystem-compile",
+                Some(DomainEventKind::SubsystemChanged),
+            ),
+            handler: ToolHandler::NativeOperation {
+                operation: "subsystem-compile",
+                event: Some(DomainEventKind::SubsystemChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.subsystem.edit",
+            description: "Edit subsystem XML content and hierarchy.",
+            mutating: true,
+            cache_access: cache_access_for(
+                "subsystem-edit",
+                Some(DomainEventKind::SubsystemChanged),
+            ),
+            handler: ToolHandler::NativeOperation {
+                operation: "subsystem-edit",
+                event: Some(DomainEventKind::SubsystemChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.subsystem.info",
+            description: "Inspect subsystem XML and command interface.",
+            mutating: false,
+            cache_access: cache_access_for("subsystem-info", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "subsystem-info",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.subsystem.validate",
+            description: "Validate subsystem XML.",
+            mutating: false,
+            cache_access: cache_access_for("subsystem-validate", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "subsystem-validate",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.template.add",
+            description: "Add a template to an object and register it.",
+            mutating: true,
+            cache_access: cache_access_for("template-add", Some(DomainEventKind::TemplateChanged)),
+            handler: ToolHandler::NativeOperation {
+                operation: "template-add",
+                event: Some(DomainEventKind::TemplateChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.template.remove",
+            description: "Remove a template from an object.",
+            mutating: true,
+            cache_access: cache_access_for(
+                "template-remove",
+                Some(DomainEventKind::TemplateChanged),
+            ),
+            handler: ToolHandler::NativeOperation {
+                operation: "template-remove",
+                event: Some(DomainEventKind::TemplateChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.skd.compile",
+            description: "Compile Data Composition Schema XML from JSON DSL.",
+            mutating: true,
+            cache_access: cache_access_for("skd-compile", Some(DomainEventKind::SkdChanged)),
+            handler: ToolHandler::NativeOperation {
+                operation: "skd-compile",
+                event: Some(DomainEventKind::SkdChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.skd.edit",
+            description: "Edit Data Composition Schema Template.xml.",
+            mutating: true,
+            cache_access: cache_access_for("skd-edit", Some(DomainEventKind::SkdChanged)),
+            handler: ToolHandler::NativeOperation {
+                operation: "skd-edit",
+                event: Some(DomainEventKind::SkdChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.skd.info",
+            description: "Inspect Data Composition Schema Template.xml.",
+            mutating: false,
+            cache_access: cache_access_for("skd-info", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "skd-info",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.skd.validate",
+            description: "Validate Data Composition Schema Template.xml.",
+            mutating: false,
+            cache_access: cache_access_for("skd-validate", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "skd-validate",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.mxl.compile",
+            description: "Compile spreadsheet Template.xml from JSON DSL.",
+            mutating: true,
+            cache_access: cache_access_for("mxl-compile", Some(DomainEventKind::MxlChanged)),
+            handler: ToolHandler::NativeOperation {
+                operation: "mxl-compile",
+                event: Some(DomainEventKind::MxlChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.mxl.decompile",
+            description: "Decompile spreadsheet Template.xml to JSON DSL.",
+            mutating: false,
+            cache_access: cache_access_for("mxl-decompile", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "mxl-decompile",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.mxl.info",
+            description: "Inspect spreadsheet Template.xml.",
+            mutating: false,
+            cache_access: cache_access_for("mxl-info", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "mxl-info",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.mxl.validate",
+            description: "Validate spreadsheet Template.xml.",
+            mutating: false,
+            cache_access: cache_access_for("mxl-validate", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "mxl-validate",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.role.compile",
+            description: "Compile role metadata and Rights.xml from JSON DSL.",
+            mutating: true,
+            cache_access: cache_access_for("role-compile", Some(DomainEventKind::RoleChanged)),
+            handler: ToolHandler::NativeOperation {
+                operation: "role-compile",
+                event: Some(DomainEventKind::RoleChanged),
+            },
+        },
+        ToolSpec {
+            name: "unica.role.info",
+            description: "Inspect role Rights.xml.",
+            mutating: false,
+            cache_access: cache_access_for("role-info", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "role-info",
+                event: None,
+            },
+        },
+        ToolSpec {
+            name: "unica.role.validate",
+            description: "Validate role Rights.xml.",
+            mutating: false,
+            cache_access: cache_access_for("role-validate", None),
+            handler: ToolHandler::NativeOperation {
+                operation: "role-validate",
+                event: None,
+            },
+        },
     ]
 }
 
-fn legacy(
-    name: &'static str,
-    skill: &'static str,
-    script: &'static str,
-    description: &'static str,
-    mutating: bool,
-    event: Option<DomainEventKind>,
-) -> ToolSpec {
-    ToolSpec {
-        name,
-        description,
-        mutating,
-        handler: ToolHandler::LegacyScript {
-            skill,
-            script,
-            event,
-        },
+fn cache_access_for(operation: &str, event: Option<DomainEventKind>) -> CacheAccess {
+    if event.is_some() {
+        return CacheAccess {
+            reads: &[],
+            writes: &["metadata_graph"],
+        };
+    }
+
+    if operation.starts_with("form-") {
+        CacheAccess {
+            reads: &["metadata_graph", "form_graph"],
+            writes: &[],
+        }
+    } else if operation.starts_with("role-") {
+        CacheAccess {
+            reads: &["metadata_graph", "rights_graph"],
+            writes: &[],
+        }
+    } else if operation.starts_with("skd-") {
+        CacheAccess {
+            reads: &["metadata_graph", "skd_graph"],
+            writes: &[],
+        }
+    } else if operation.starts_with("mxl-") {
+        CacheAccess {
+            reads: &["metadata_graph", "mxl_graph"],
+            writes: &[],
+        }
+    } else if operation.starts_with("subsystem-") || operation.starts_with("interface-") {
+        CacheAccess {
+            reads: &[
+                "metadata_graph",
+                "subsystem_graph",
+                "command_interface_graph",
+            ],
+            writes: &[],
+        }
+    } else {
+        CacheAccess {
+            reads: &["workspace_graph", "metadata_graph"],
+            writes: &[],
+        }
     }
 }
 
@@ -633,13 +794,102 @@ mod tests {
             .unwrap();
         assert!(result.ok);
         assert!(result.summary.contains("dry run"));
-        assert!(result.command.unwrap()[0].contains("python3"));
+        assert!(result.command.is_none());
         assert_eq!(result.cache.mode, "dry-run");
         assert!(result.cache.events.contains(&"FormChanged".to_string()));
         assert!(result
             .cache
             .invalidated
             .contains(&"metadata_graph".to_string()));
+    }
+
+    #[test]
+    fn xml_dsl_tools_route_to_existing_script_or_parity_covered_native_handler() {
+        const PARITY_COVERED_TOOLS: &[&str] = &[
+            "unica.cf.edit",
+            "unica.cf.info",
+            "unica.cf.init",
+            "unica.cf.validate",
+            "unica.cfe.borrow",
+            "unica.cfe.diff",
+            "unica.cfe.init",
+            "unica.cfe.patch_method",
+            "unica.cfe.validate",
+            "unica.meta.compile",
+            "unica.meta.edit",
+            "unica.meta.info",
+            "unica.meta.remove",
+            "unica.meta.validate",
+            "unica.form.add",
+            "unica.form.compile",
+            "unica.form.edit",
+            "unica.form.info",
+            "unica.form.remove",
+            "unica.form.validate",
+            "unica.interface.edit",
+            "unica.interface.validate",
+            "unica.subsystem.compile",
+            "unica.subsystem.edit",
+            "unica.subsystem.info",
+            "unica.subsystem.validate",
+            "unica.template.add",
+            "unica.template.remove",
+            "unica.skd.compile",
+            "unica.skd.edit",
+            "unica.skd.info",
+            "unica.skd.validate",
+            "unica.mxl.compile",
+            "unica.mxl.decompile",
+            "unica.mxl.info",
+            "unica.mxl.validate",
+            "unica.role.compile",
+            "unica.role.info",
+            "unica.role.validate",
+        ];
+
+        for tool in tools() {
+            if !tool.name.starts_with("unica.cf.")
+                && !tool.name.starts_with("unica.cfe.")
+                && !tool.name.starts_with("unica.meta.")
+                && !tool.name.starts_with("unica.form.")
+                && !tool.name.starts_with("unica.interface.")
+                && !tool.name.starts_with("unica.subsystem.")
+                && !tool.name.starts_with("unica.template.")
+                && !tool.name.starts_with("unica.skd.")
+                && !tool.name.starts_with("unica.mxl.")
+                && !tool.name.starts_with("unica.role.")
+            {
+                continue;
+            }
+
+            match tool.handler {
+                ToolHandler::LegacyScript { skill, script, .. } => {
+                    let script_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                        .join("../..")
+                        .join("plugins")
+                        .join("unica")
+                        .join("skills")
+                        .join(skill)
+                        .join("scripts")
+                        .join(script);
+                    assert!(
+                        script_path.is_file(),
+                        "{} routes to missing transitional script {}",
+                        tool.name,
+                        script_path.display()
+                    );
+                }
+                ToolHandler::NativeOperation { operation, .. } => {
+                    assert!(
+                        PARITY_COVERED_TOOLS.contains(&tool.name),
+                        "{} routes to native operation {} without a parity fixture proving script-equivalent behavior",
+                        tool.name,
+                        operation
+                    );
+                }
+                _ => panic!("{} routes through unexpected handler", tool.name),
+            }
+        }
     }
 
     #[test]

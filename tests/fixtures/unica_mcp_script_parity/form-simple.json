@@ -1,0 +1,27 @@
+{
+  "title": "Parity form",
+  "properties": {
+    "autoTitle": false
+  },
+  "elements": [
+    {
+      "input": "Code",
+      "path": "Object.Code",
+      "title": "Code"
+    }
+  ],
+  "attributes": [
+    {
+      "name": "Object",
+      "type": "CatalogObject.ParityCatalog",
+      "main": true,
+      "savedData": true
+    }
+  ],
+  "commands": [
+    {
+      "name": "Refresh",
+      "title": "Refresh"
+    }
+  ]
+}

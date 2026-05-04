@@ -13,7 +13,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.role.validate`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.role.validate`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Проверяет корректность `Rights.xml` роли: формат XML, namespace, глобальные флаги, типы объектов, имена прав, RLS-ограничения, шаблоны. Опционально проверяет метаданные роли (UUID, имя, синоним).
@@ -27,8 +27,20 @@ allowed-tools:
 | MaxErrors    | нет   | 30      | Макс. ошибок до остановки (по умолчанию 30)      |
 | OutFile      | нет   | —       | Записать результат в файл (UTF-8 BOM)            |
 
-## Команда
+## MCP вызов
 
-```powershell
-powershell.exe -NoProfile -File scripts/role-validate.ps1 -RightsPath "Roles/МояРоль"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.role.validate",
+    "arguments": {
+      "cwd": "<workspace>",
+      "RightsPath": "src/Roles/ЧтениеНоменклатуры",
+      "Detailed": true,
+      "MaxErrors": 30
+    }
+  }
+}
 ```

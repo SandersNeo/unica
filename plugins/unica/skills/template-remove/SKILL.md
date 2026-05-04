@@ -18,7 +18,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.template.remove`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.template.remove`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Удаляет макет и убирает его регистрацию из корневого XML объекта.
@@ -35,10 +35,23 @@ allowed-tools:
 | TemplateName | да           | —            | Имя макета для удаления             |
 | SrcDir       | нет          | `src`        | Каталог исходников                  |
 
-## Команда
+## MCP вызов
 
-```powershell
-powershell.exe -NoProfile -File scripts/remove-template.ps1 -ObjectName "<ObjectName>" -TemplateName "<TemplateName>" [-SrcDir "<SrcDir>"]
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.template.remove",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectName": "ОтчетПродажи",
+      "TemplateName": "СтарыйМакет",
+      "SrcDir": "src/Reports",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## Что удаляется

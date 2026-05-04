@@ -17,7 +17,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.form.add`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.form.add`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Создаёт управляемую форму (metadata XML + Form.xml + Module.bsl) и регистрирует её в корневом XML объекта конфигурации (Document, Catalog, InformationRegister и др.).
@@ -36,10 +36,25 @@ allowed-tools:
 | Synonym     | нет          | = FormName   | Синоним формы                                 |
 | --set-default | нет        | авто         | Установить как форму по умолчанию             |
 
-## Команда
+## MCP вызов
 
-```powershell
-powershell.exe -NoProfile -File scripts/form-add.ps1 -ObjectPath "<ObjectPath>" -FormName "<FormName>" [-Purpose "<Purpose>"] [-Synonym "<Synonym>"] [-SetDefault]
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.form.add",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "src/Catalogs/Номенклатура.xml",
+      "FormName": "ФормаЭлемента",
+      "Purpose": "Object",
+      "Synonym": "Форма элемента",
+      "SetDefault": true,
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## Purpose — назначение формы
@@ -53,23 +68,102 @@ powershell.exe -NoProfile -File scripts/form-add.ps1 -ObjectPath "<ObjectPath>" 
 
 ## Примеры
 
+### Форма документа
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.form.add",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "Documents/АвансовыйОтчет.xml",
+      "FormName": "ФормаДокумента",
+      "Purpose": "Object",
+      "dryRun": false
+    }
+  }
+}
 ```
-# Форма документа
-/form-add Documents/АвансовыйОтчет.xml ФормаДокумента --purpose Object
 
-# Форма списка каталога
-/form-add Catalogs/Контрагенты.xml ФормаСписка --purpose List
+### Форма списка каталога
 
-# Форма записи регистра сведений
-/form-add InformationRegisters/КурсыВалют.xml ФормаЗаписи --purpose Record
-
-# Форма выбора с синонимом
-/form-add Catalogs/Номенклатура.xml ФормаВыбора --purpose Choice --synonym "Выбор номенклатуры"
-
-# Установить как форму по умолчанию
-/form-add Documents/Заказ.xml ФормаДокументаНовая --purpose Object --set-default
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.form.add",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "Catalogs/Контрагенты.xml",
+      "FormName": "ФормаСписка",
+      "Purpose": "List",
+      "dryRun": false
+    }
+  }
+}
 ```
 
+### Форма записи регистра сведений
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.form.add",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "InformationRegisters/КурсыВалют.xml",
+      "FormName": "ФормаЗаписи",
+      "Purpose": "Record",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Форма выбора с синонимом
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.form.add",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "Catalogs/Номенклатура.xml",
+      "FormName": "ФормаВыбора",
+      "Purpose": "Choice",
+      "Synonym": "Выбор номенклатуры",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Установить как форму по умолчанию
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.form.add",
+    "arguments": {
+      "cwd": "<workspace>",
+      "ObjectPath": "Documents/Заказ.xml",
+      "FormName": "ФормаДокументаНовая",
+      "Purpose": "Object",
+      "SetDefault": true,
+      "dryRun": false
+    }
+  }
+}
+```
 ## Workflow
 
 1. `/form-add` — создать каркас формы

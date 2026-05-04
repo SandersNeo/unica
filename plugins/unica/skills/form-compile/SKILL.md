@@ -15,7 +15,7 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.form.compile`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.form.compile`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Два режима:
@@ -32,14 +32,42 @@ allowed-tools:
 | OutputPath | да           | Путь к выходному Form.xml       |
 | FromObject | режим 2      | Флаг (без значения) — генерация по метаданным объекта |
 
-## Команда
+## MCP вызов
 
-```powershell
-# Режим JSON DSL
-powershell.exe -NoProfile -File scripts/form-compile.ps1 -JsonPath "<json>" -OutputPath "<Form.xml>"
+### JSON DSL из файла
 
-# Режим from-object (объект и purpose выводятся из OutputPath; Document и Catalog)
-powershell.exe -NoProfile -File scripts/form-compile.ps1 -FromObject -OutputPath "<.../TypePlural/ObjectName/Forms/FormName/Ext/Form.xml>"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.form.compile",
+    "arguments": {
+      "cwd": "<workspace>",
+      "JsonPath": "<json>",
+      "OutputPath": "<Form.xml>",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### From object без промежуточного JSON
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.form.compile",
+    "arguments": {
+      "cwd": "<workspace>",
+      "FromObject": true,
+      "OutputPath": "<.../TypePlural/ObjectName/Forms/FormName/Ext/Form.xml>",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## JSON DSL — справка
@@ -470,9 +498,36 @@ powershell.exe -NoProfile -File scripts/form-compile.ps1 -FromObject -OutputPath
 
 ## Верификация
 
+### Проверка корректности XML
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.form.validate",
+    "arguments": {
+      "cwd": "<workspace>",
+      "FormPath": "<OutputPath>"
+    }
+  }
+}
 ```
-/form-validate <OutputPath>    — проверка корректности XML
-/form-info <OutputPath>        — визуальная сводка структуры
+
+### Сводка структуры формы
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.form.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "FormPath": "<OutputPath>"
+    }
+  }
+}
 ```
 
 ## Особенности для внешних обработок (EPF)

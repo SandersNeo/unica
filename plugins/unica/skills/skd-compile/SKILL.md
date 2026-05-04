@@ -15,12 +15,12 @@ allowed-tools:
 
 - Preferred path: use MCP `unica` tool `unica.skd.compile`; `unica` owns XML/JSON DSL work and refreshes related workspace caches after mutations.
 - Do not call internal MCP/CLI adapters directly. They are hidden behind `unica` and synchronized by the orchestrator.
-- Current Python/PowerShell scripts are fallback implementation details until Rust parity is complete.
+- Execution path: call MCP `unica` tool `unica.skd.compile`; skill-local operation scripts are not part of the workflow.
 - For mutating operations, pass `dryRun: false` only when the user explicitly requested the change; otherwise keep the default dry run.
 
 Принимает JSON-определение схемы компоновки данных → генерирует Template.xml (DataCompositionSchema).
 
-## Параметры и команда
+## MCP параметры
 
 | Параметр | Описание |
 |----------|----------|
@@ -28,12 +28,40 @@ allowed-tools:
 | `Value` | JSON-строка с определением СКД (взаимоисключающий с DefinitionFile) |
 | `OutputPath` | Путь к выходному Template.xml |
 
-```powershell
-# Из файла
-powershell.exe -NoProfile -File scripts/skd-compile.ps1 -DefinitionFile "<json>" -OutputPath "<Template.xml>"
+### Из файла
 
-# Из строки (без промежуточного файла)
-powershell.exe -NoProfile -File scripts/skd-compile.ps1 -Value '<json-string>' -OutputPath "<Template.xml>"
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.compile",
+    "arguments": {
+      "cwd": "<workspace>",
+      "DefinitionFile": "<json>",
+      "OutputPath": "<Template.xml>",
+      "dryRun": false
+    }
+  }
+}
+```
+
+### Из строки без промежуточного файла
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.compile",
+    "arguments": {
+      "cwd": "<workspace>",
+      "Value": "<json-string>",
+      "OutputPath": "<Template.xml>",
+      "dryRun": false
+    }
+  }
+}
 ```
 
 ## JSON DSL — краткий справочник
@@ -416,8 +444,52 @@ Raw XML (`"template": "<...>"`) остаётся как fallback. Детект: 
 
 ## Верификация
 
+### Валидация структуры XML
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.validate",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<OutputPath>"
+    }
+  }
+}
 ```
-/skd-validate <OutputPath>                  — валидация структуры XML
-/skd-info <OutputPath>                      — визуальная сводка
-/skd-info <OutputPath> -Mode variant -Name 1 — проверка варианта настроек
+
+### Сводка схемы
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<OutputPath>"
+    }
+  }
+}
+```
+
+### Проверка варианта настроек
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "unica.skd.info",
+    "arguments": {
+      "cwd": "<workspace>",
+      "TemplatePath": "<OutputPath>",
+      "Mode": "variant",
+      "Name": "1"
+    }
+  }
+}
 ```
